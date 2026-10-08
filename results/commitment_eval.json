@@ -1,0 +1,30 @@
+{
+ "contains 'will' (baseline)": {
+  "flagged": 44,
+  "raw_precision": 0.8,
+  "pop_precision": 0.51,
+  "pop_recall": 0.69
+ },
+ "rule-based patterns": {
+  "flagged": 43,
+  "raw_precision": 0.79,
+  "pop_precision": 0.79,
+  "pop_recall": 0.4
+ },
+ "specific-pledge detector (rules + specificity cue)": {
+  "flagged": 7,
+  "raw_precision": 0.86,
+  "raw_recall": 0.5,
+  "pop_precision": 0.86,
+  "pop_recall": 0.16,
+  "gold_specific": 12
+ },
+ "embeddings + LogReg (CV, 3-class)": {
+  "accuracy": 0.73,
+  "macro_F1": 0.62
+ },
+ "rules 3-class (unweighted)": {
+  "accuracy": 0.6,
+  "macro_F1": 0.44
+ }
+}

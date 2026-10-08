@@ -1,0 +1,37 @@
+# Big data and generated files (download the Hansard Parquet from Zenodo, doi 10.5281/zenodo.17351233)
+data/*.parquet
+data/*.csv
+data/*.npy
+app/data/
+models/
+results/_*
+results/*.log
+results/*.joblib
+results/screens/app_*.jpg
+
+# Keep the small labelled sets that the report depends on
+!data/evasiveness_labels.parquet
+!data/commitment_labelled.parquet
+!data/commitment_sample.parquet
+!data/commitment_gold.txt
+!data/retrieval_judgements.txt
+
+# Do not publish the independent-annotation answer key (it would bias teammates' labels)
+team_labelling/_answer_key_DO_NOT_SHARE.csv
+results/retrieval_pool_methods_HIDDEN.csv
+
+# Python / Node / editor
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+node_modules/
+.streamlit/secrets.toml
+.claude/
+.vscode/
+*.tmp
+
+# secrets and local settings
+.env
+*.key
+.ruff_cache/

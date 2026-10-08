@@ -1,0 +1,4 @@
+method,precision@3,sum,count,keyword_relevant,keyword_slots,keyword_p3,paraphrase_relevant,paraphrase_slots,paraphrase_p3
+bm25,0.778,35,45,30,30,1.0,5,15,0.333
+bm25+cross-encoder,0.956,43,45,30,30,1.0,13,15,0.867
+dense (MiniLM),0.844,38,45,26,30,0.867,12,15,0.8

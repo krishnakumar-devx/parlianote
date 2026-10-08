@@ -1,0 +1,25 @@
+subset,task,model,accuracy,macro_F1,sd_acc
+All pairs (n=120),3-class,Majority class,0.433,0.201,0.02
+All pairs (n=120),3-class,TF-IDF + SVM,0.564,0.527,0.083
+All pairs (n=120),3-class,Lexical cues + LR,0.627,0.608,0.066
+All pairs (n=120),3-class,Embedding similarity + LR,0.443,0.435,0.081
+All pairs (n=120),3-class,Cross-encoder + LR,0.589,0.582,0.079
+All pairs (n=120),3-class,All features + LR,0.636,0.619,0.069
+All pairs (n=120),evasive vs not,Majority class,0.758,0.431,0.017
+All pairs (n=120),evasive vs not,TF-IDF + SVM,0.804,0.655,0.06
+All pairs (n=120),evasive vs not,Lexical cues + LR,0.765,0.711,0.073
+All pairs (n=120),evasive vs not,Embedding similarity + LR,0.667,0.602,0.089
+All pairs (n=120),evasive vs not,Cross-encoder + LR,0.702,0.677,0.084
+All pairs (n=120),evasive vs not,All features + LR,0.769,0.719,0.07
+Other-bloc questions (n=64),3-class,Majority class,0.469,0.213,0.015
+Other-bloc questions (n=64),3-class,TF-IDF + SVM,0.612,0.425,0.119
+Other-bloc questions (n=64),3-class,Lexical cues + LR,0.609,0.505,0.105
+Other-bloc questions (n=64),3-class,Embedding similarity + LR,0.464,0.409,0.138
+Other-bloc questions (n=64),3-class,Cross-encoder + LR,0.477,0.39,0.097
+Other-bloc questions (n=64),3-class,All features + LR,0.607,0.48,0.1
+Other-bloc questions (n=64),evasive vs not,Majority class,0.578,0.366,0.034
+Other-bloc questions (n=64),evasive vs not,TF-IDF + SVM,0.678,0.642,0.108
+Other-bloc questions (n=64),evasive vs not,Lexical cues + LR,0.681,0.66,0.113
+Other-bloc questions (n=64),evasive vs not,Embedding similarity + LR,0.587,0.57,0.09
+Other-bloc questions (n=64),evasive vs not,Cross-encoder + LR,0.686,0.675,0.144
+Other-bloc questions (n=64),evasive vs not,All features + LR,0.676,0.657,0.109

@@ -1,0 +1,16 @@
+pandas
+numpy
+pyarrow
+scikit-learn
+gensim
+nltk
+sentence-transformers
+rank-bm25
+streamlit
+altair
+matplotlib
+openpyxl
+joblib
+faiss-cpu
+requests
+python-dotenv

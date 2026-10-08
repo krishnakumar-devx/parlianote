@@ -1,0 +1,6 @@
+[tool.ruff]
+line-length = 140
+
+[tool.ruff.lint]
+select = ["F", "E9", "E7", "W6"]
+ignore = ["E731"]

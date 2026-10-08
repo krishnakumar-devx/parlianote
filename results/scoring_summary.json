@@ -1,0 +1,24 @@
+{
+ "pairs": 16020,
+ "opposition_pairs": 8362,
+ "friendly_pairs": 7658,
+ "pred_share_all": {
+  "D": 0.474,
+  "E": 0.289,
+  "P": 0.237
+ },
+ "pred_share_opposition": {
+  "E": 0.532,
+  "P": 0.43,
+  "D": 0.038
+ },
+ "pred_share_friendly": {
+  "D": 0.949,
+  "P": 0.027,
+  "E": 0.024
+ },
+ "baseline_evasive_opposition": 0.532,
+ "n_ministers_ge40": 31,
+ "ministers_ci_excludes_baseline_high": 8,
+ "ministers_ci_excludes_baseline_low": 11
+}
