@@ -6,7 +6,7 @@ Type your postcode to see your local MP (Member of Parliament), what they talk a
 
 Built for *36118 Applied Natural Language Processing* (UTS) by Group 11, Team Phoenix.
 
-![Parlianote screens](results/screens/fig_app_both.png)
+![Parlianote home screen](results/screens/fig_app_home.png)
 
 ## What you can do
 
