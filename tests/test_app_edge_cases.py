@@ -143,8 +143,7 @@ for side in ["Labor", "Coalition", "Other", "Everyone"]:
 at.radio[1].set_value("Question Time across ministers").run()
 shown = texts(at)
 check("ministers view shows the caution note and average line", (not at.exception) and "not a ranking" in shown and "Dashed line" in shown)
-at.radio[2].set_value("Sort by estimate").run()
-check("ministers view sorts by estimate without error", not at.exception)
+check("ministers view has no control to rank MPs", len(at.radio) == 2)
 
 # ---- Compare MPs
 at = fresh()

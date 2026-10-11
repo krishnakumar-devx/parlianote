@@ -436,12 +436,11 @@ def _minister_comparison():
     if table.empty:
         st.info("Not enough Question Time answers to compare ministers.")
         return
-    order = st.radio("Order", ["Sort by name", "Sort by estimate"], horizontal=True, label_visibility="collapsed", key="minister_sort")
     table = table.assign(
         label=table["name"].map(C.display_name) + " (" + table["party"] + ")",
         bloc=table["party"].map(bloc),
     )
-    table = table.sort_values("share" if order == "Sort by estimate" else "name", ascending=order != "Sort by estimate")
+    table = table.sort_values("name")  # always alphabetical: this screen must not rank people
     sort = table["label"].tolist()
     base = alt.Chart(table).encode(y=alt.Y("label:N", sort=sort, title=None, axis=alt.Axis(labelLimit=260, labelOverlap=False)))
     tooltip = [
@@ -472,15 +471,13 @@ def _minister_comparison():
         "Questions from the minister's own side and questions to the Speaker are left out. Question Time data covers 2011 to 2025."
     )
     with st.expander("Show as a table"):
-        st.dataframe(
-            table[["label", "answers", "share", "low", "high", "first", "last"]].rename(
-                columns={"label": "MP", "answers": "Answers", "share": "Not direct", "low": "95% from", "high": "95% to",
-                         "first": "From", "last": "To"}
-            ),
-            hide_index=True,
-            use_container_width=True,
-            column_config={c: st.column_config.NumberColumn(format="%.2f") for c in ["Not direct", "95% from", "95% to"]},
+        # a plain table (not st.dataframe) so viewers cannot click a column header to rank the MPs
+        shown = table[["label", "answers", "share", "low", "high", "first", "last"]].rename(
+            columns={"label": "MP", "answers": "Answers", "share": "Not direct", "low": "95% from", "high": "95% to", "first": "From", "last": "To"}
         )
+        for col in ["Not direct", "95% from", "95% to"]:
+            shown[col] = shown[col].map("{:.2f}".format)
+        st.table(shown.set_index("MP"))
 
 
 # --------------------------------------------------------------------------------------------- two MPs side by side
