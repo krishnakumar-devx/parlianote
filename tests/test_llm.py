@@ -61,6 +61,39 @@ llm.requests.get = lambda *a, **k: (_ for _ in ()).throw(requests.ConnectionErro
 check("no key and no Ollama -> provider None", llm.provider() is None)
 r = llm.answer("q", P)
 check("answer() without provider returns an error, not an exception", r["error"] and not r["text"])
+
+
+class FakeTags:
+    """A stand-in for Ollama's /api/tags reply listing the given models."""
+
+    ok = True
+
+    def __init__(self, models):
+        self.models = models
+
+    def json(self):
+        return {"models": self.models}
+
+
+def ollama_with(models):
+    """provider() as it would be with Ollama running and these models pulled (OLLAMA_MODEL left at its default)."""
+    llm.os.environ.pop("OLLAMA_MODEL", None)
+    llm.requests.get = lambda *a, **k: FakeTags(models)
+    return llm.provider()
+
+
+check("Ollama running but no model pulled -> AI off, not a 404", ollama_with([]) is None)
+check(
+    "Ollama with only an embedding model -> AI off",
+    ollama_with([{"name": "nomic-embed-text:latest", "capabilities": ["embedding"]}]) is None,
+)
+check("configured Ollama model installed -> used as is", ollama_with([{"name": "llama3.2:latest"}])["model"] == "llama3.2")
+check(
+    "configured Ollama model missing -> falls back to an installed Llama",
+    ollama_with([{"name": "gemma4:e4b"}, {"name": "llama3.1:8b"}])["model"] == "llama3.1:8b",
+)
+check("no Llama installed -> falls back to the first installed model", ollama_with([{"name": "mistral:7b"}])["model"] == "mistral:7b")
+llm.requests.get = lambda *a, **k: (_ for _ in ()).throw(requests.ConnectionError())
 llm.os.environ["OPENAI_API_KEY"] = "sk-test"
 check("key present -> OpenAI selected", llm.provider()["name"] == "OpenAI")
 llm.os.environ["AI_ANSWERS"] = "0"

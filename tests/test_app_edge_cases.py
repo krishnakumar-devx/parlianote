@@ -4,11 +4,13 @@ Run from the project root:  python tests/test_app_edge_cases.py
 """
 
 import sys
+from pathlib import Path
+
 import pandas as pd
 import pyarrow.parquet as pq
 from streamlit.testing.v1 import AppTest
 
-APP = "app/app.py"
+APP = str(Path(__file__).resolve().parents[1] / "app" / "app.py")  # absolute: newer Streamlit resolves relative paths from this file
 results = []
 
 
@@ -130,6 +132,33 @@ shown = sq("climate change")
 check("Search all: named speakers include a party and area", ("ALP" in shown or "LIB" in shown or "IND" in shown or "GRN" in shown))
 at.slider[0].set_value((2020, 2020)).run()
 check("Search all: single-year filter does not crash", not at.exception)
+
+# ---- Parliament trends
+at = fresh()
+at.radio[0].set_value("Parliament trends").run()
+check("Parliament trends opens with the topic chart", (not at.exception) and "Grew the most" in texts(at))
+for side in ["Labor", "Coalition", "Other", "Everyone"]:
+    at.radio[2].set_value(side).run()  # radio[1] switches the trend view, radio[2] picks the side of politics
+    check(f"Parliament trends: side {side!r} renders", not at.exception)
+at.radio[1].set_value("Question Time across ministers").run()
+shown = texts(at)
+check("ministers view shows the caution note and average line", (not at.exception) and "not a ranking" in shown and "Dashed line" in shown)
+at.radio[2].set_value("Sort by estimate").run()
+check("ministers view sorts by estimate without error", not at.exception)
+
+# ---- Compare MPs
+at = fresh()
+at.radio[0].set_value("Compare MPs").run()
+check("Compare MPs opens with steps", (not at.exception) and "Choose two MPs" in texts(at))
+at.selectbox[0].set_value("Steggall, Zali").run()
+at.selectbox[1].set_value("Steggall, Zali").run()
+check("Compare MPs: same MP twice is caught", (not at.exception) and "same MP twice" in texts(at))
+at.selectbox[1].set_value(few_mp).run()
+check("Compare MPs: MP with the fewest speeches renders", not at.exception)
+at.text_input[0].set_value("banana bread recipe").run()
+check("Compare MPs: off-topic says nothing clearly matches", (not at.exception) and "clearly matches" in texts(at))
+at.text_input[0].set_value("climate change").run()
+check("Compare MPs: shared query renders", not at.exception)
 
 bad = [r for r in results if not r[1]]
 print(f"\n{len(results) - len(bad)} of {len(results)} checks passed")

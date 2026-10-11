@@ -12,8 +12,15 @@ ELECTION_2025 = pd.Timestamp("2025-05-03")  # seats may have changed hands after
 MAX_QUERY_CHARS = 300  # longest search text we accept
 
 # The two top-level modes, and the screens available once an MP has been chosen.
-MODES = ["Find my MP", "Search all MPs"]
+MODES = ["Find my MP", "Search all MPs", "Compare MPs", "Parliament trends"]
 VIEWS = ["Overview", "Ask the record", "Question Time", "Promises", "About and limits"]
+
+# Full party names for the abbreviations used in the record.
+PARTY_NAMES = {
+    "ALP": "Labor", "LIB": "Liberal", "NP": "Nationals", "NAT": "Nationals", "NATS WA": "Nationals WA", "IND": "Independent",
+    "GRN": "Greens", "KAP": "Katter's Australian Party", "CA": "Centre Alliance", "NXT": "Nick Xenophon Team",
+    "CLP": "Country Liberal Party", "PUP": "Palmer United Party", "CDP": "Christian Democratic Party", "PHON": "One Nation",
+}
 
 # One-click examples shown on the home screen.
 EXAMPLE_POSTCODES = [("2088", "Mosman"), ("2000", "Sydney"), ("3000", "Melbourne"), ("4000", "Brisbane"), ("6000", "Perth")]

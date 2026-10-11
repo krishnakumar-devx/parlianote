@@ -21,28 +21,12 @@ from src.ui import views  # noqa: E402
 from src.ui.config import ELECTION_2025, EXAMPLE_POSTCODES, MODES, VIEWS  # noqa: E402
 from src.ui.data import ai_provider, load_lookup, load_mp_list, load_speeches  # noqa: E402
 
-st.set_page_config(page_title="Parlianote", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Parlianote", page_icon="🏛️", layout="wide", initial_sidebar_state="collapsed")
 C.apply_style()
 
 postcodes, latest_speaker = load_lookup()
 mps = load_mp_list()
-
-
-# ------------------------------------------------------------------------------------------------ sidebar
-with st.sidebar:
-    st.header("About Parlianote")
-    st.write("See what Australian MPs have actually said in Parliament, with the source for every quote.")
-    st.markdown(f"**Coverage:** {len(mps)} MPs, speeches from March 1998 to July 2025, House of Representatives only.")
-    provider = ai_provider()
-    st.markdown(
-        "**AI-written answers:** "
-        + (f"on ({provider['name']}, {provider['model']})" if provider else "off. Add a key to the .env file to turn them on.")
-    )
-    st.markdown("**Good to know**")
-    st.markdown(
-        "- Quotes are copied word for word.\n- Scores about answers are rough estimates, not verdicts.\n- Nothing here is official or endorsed by Parliament."
-    )
-    st.caption("Data: Katz & Alexander (2025), Zenodo, CC BY 4.0.")
+provider = ai_provider()
 
 
 # ------------------------------------------------------------------------------------------------ remember choices
@@ -56,31 +40,32 @@ st.session_state.setdefault("global_q", query.get("q", "") if start_mode == MODE
 st.session_state.setdefault("mp_q", query.get("q", "") if start_mode == MODES[0] else "")
 st.session_state.setdefault("mp_pick", query.get("mp") if query.get("mp") in mp_names else mp_names[0])
 st.session_state.setdefault("view", query.get("view") if query.get("view") in VIEWS else VIEWS[0])
+st.session_state.setdefault("cmp_a", query.get("a") if query.get("a") in mp_names else "(choose an MP)")
+st.session_state.setdefault("cmp_b", query.get("b") if query.get("b") in mp_names else "(choose an MP)")
 
 
 # ------------------------------------------------------------------------------------------------ header and mode
-st.title("Parlianote")
-st.caption(
-    "What your MP actually says in Parliament, with the source for every quote. "
-    "An MP (Member of Parliament) is the person who represents your local area. "
-    "Everything comes from Hansard, the official written record of the House of Representatives, March 1998 to July 2025."
-)
-st.radio("What would you like to do?", MODES, horizontal=True, key="mode")
+C.hero(f"AI answers on · {provider['name']}" if provider else f"{len(mps)} MPs · 1998–2025")
+st.radio(
+    "What would you like to do?", MODES, horizontal=True, key="mode", label_visibility="collapsed", on_change=st.query_params.clear
+)  # a new screen starts with a clean address bar; each screen then writes its own shareable link
+footnote = f"AI answers: {provider['name']} ({provider['model']})." if provider else "AI answers are off; add a key to .env to turn them on."
 
-if st.session_state["mode"] == MODES[1]:
-    views.search_all()
-    C.footer("Always check quotes against the official record.")
+if st.session_state["mode"] != MODES[0]:
+    {MODES[1]: views.search_all, MODES[2]: lambda: views.compare_mps(mps), MODES[3]: views.parliament_trends}[st.session_state["mode"]]()
+    C.footer(footnote)
     st.stop()
 
 
 # ------------------------------------------------------------------------------------------------ find my MP
 def find_mp():
     """Draw the postcode box and MP picker. Returns (mp_key or None, note for under the MP card, postcode typed, name picked)."""
-    col_postcode, col_name = st.columns([1, 2])
-    with col_postcode:
-        postcode = st.text_input("Your postcode", max_chars=4, placeholder="e.g. 2088", key="postcode").strip()
-    with col_name:
-        picked = st.selectbox("...or pick an MP by name", mp_names, key="mp_pick")
+    with st.container(border=True):
+        col_postcode, col_name = st.columns([1, 2], gap="large")
+        with col_postcode:
+            postcode = st.text_input("Your postcode", max_chars=4, placeholder="e.g. 2088", key="postcode").strip()
+        with col_name:
+            picked = st.selectbox("Or choose an MP by name", mp_names, key="mp_pick")
 
     if picked != "(use postcode)":
         return mps.loc[mps["name"] == picked, "mp_key"].iloc[0], None, postcode, picked
@@ -125,19 +110,14 @@ if mp_key is None:
     if not postcode:
         C.how_it_works()
         C.example_buttons("Try an example postcode:", EXAMPLE_POSTCODES, "ex_pc", "postcode", fmt=lambda item: f"{item[0]} ({item[1]})")
-    C.footer()
+    C.footer(footnote)
     st.stop()
 
 info = mps[mps["mp_key"] == mp_key].iloc[0]
 speeches = load_speeches(mp_key)
-st.markdown(
-    f"<div class='mp-card'><h3>{C.esc(info['name'])}</h3>"
-    f"{C.esc(info['party'])} &middot; {C.esc(info['electorate'])} &middot; {info['n']:,} speeches recorded, "
-    f"{pd.Timestamp(info['first']).year}&ndash;{pd.Timestamp(info['last']).year}</div>",
-    unsafe_allow_html=True,
-)
+C.mp_header(info)
 if note:
-    st.caption(note)
+    C.notice(note)
 st.query_params.update(
     {"mode": MODES[0], "postcode": postcode} if postcode and picked == "(use postcode)" else {"mode": MODES[0], "mp": picked}
 )
@@ -154,4 +134,4 @@ elif view == "Promises":
     views.promises(mp_key)
 else:
     views.about()
-C.footer("Always check quotes against the official record.")
+C.footer(footnote)

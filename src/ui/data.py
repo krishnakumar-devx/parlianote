@@ -53,6 +53,45 @@ def load_speeches(mp_key: str) -> pd.DataFrame:
     return t.sort_values("date").reset_index(drop=True)
 
 
+@st.cache_data(show_spinner=False)
+def load_topic_counts() -> pd.DataFrame:
+    """Speeches per year, party and subject across the whole House (speeches without a subject are left out)."""
+    t = pq.read_table(DATA / "speeches.parquet", columns=["year", "party", "topic"]).to_pandas()
+    t = t[t["topic"] >= 0]
+    return t.groupby(["year", "party", "topic"]).size().reset_index(name="speeches")
+
+
+@st.cache_data(show_spinner=False)
+def load_minister_directness(min_answers: int = 40) -> pd.DataFrame:
+    """For every MP with enough Question Time answers to the other side: share scored 'not direct', with a 95% range.
+
+    Same rules as the single-MP screen and results/minister_directness.csv: questions to the Speaker and questions from the
+    minister's own side are left out.
+    """
+    pairs = load_pairs()
+    opp = pairs[~pairs["a_is_chair"] & ~pairs["same_bloc"]]
+    rows = []
+    for key, g in opp.groupby("a_key"):
+        if len(g) < min_answers:
+            continue
+        k = int((g["pred"] == "E").sum())
+        low, high = wilson(k, len(g))
+        rows.append(
+            {
+                "mp_key": key,
+                "name": g["a_name"].iloc[-1],
+                "party": g["a_party"].mode().iloc[0],
+                "answers": len(g),
+                "share": k / len(g),
+                "low": low,
+                "high": high,
+                "first": int(g["year"].min()),
+                "last": int(g["year"].max()),
+            }
+        )
+    return pd.DataFrame(rows), float((opp["pred"] == "E").mean())
+
+
 @st.cache_resource(show_spinner="Loading language models (first time only, about 15 seconds)...")
 def load_models():
     """Sentence-embedding model (picks key sentences) and cross-encoder (scores how well a passage answers a query)."""

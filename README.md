@@ -14,6 +14,8 @@ Built for *36118 Applied Natural Language Processing* (UTS) by Group 11, Team Ph
 |---|---|
 | **Find my MP** | Postcode (or MP name) to the MP, then five views: Overview, Ask the record, Question Time, Promises, About and limits |
 | **Search all MPs** | Type a topic or question; see who spoke about it, three key sentences with their speaker, and the passages behind them |
+| **Compare MPs** | Two MPs side by side: the subjects each talks about, and what each said on the same question |
+| **Parliament trends** | How the subjects of the whole House changed from 1998 to 2025 (optionally by side of politics), and Question Time directness across ministers with 95% ranges |
 | **Overview** | Speeches per year, the subjects an MP talks about, and how that mix changed over time |
 | **Ask the record** | Search one MP's speeches; compare their early and late wording; download the results as CSV |
 | **Question Time** | A rough estimate of how directly ministers answer questions from the other side, with a confidence range |
@@ -24,7 +26,7 @@ If a search finds nothing that clearly matches, the app says so plainly and expl
 
 ## Quick start
 
-You need Python 3.10 or newer (developed and tested on 3.13).
+You need Python 3.10 or newer (developed on 3.13, also tested on 3.11). `requirements.txt` gives version ranges that are known to work together; the interface was tested with Streamlit 1.35 and 1.65.
 
 ```bash
 pip install -r requirements.txt
@@ -45,7 +47,9 @@ The app works fully without this. To add the short AI answer:
 
 1. Copy `.env.example` to `.env`.
 2. Paste your key after `OPENAI_API_KEY=` (or use `ANTHROPIC_API_KEY`, or run [Ollama](https://ollama.com) locally for a free option).
-3. Restart the app. The sidebar shows whether AI answers are on.
+3. Restart the app. The badge in the top-right corner (and the footer) shows whether AI answers are on.
+
+With Ollama, the app uses the model named in `OLLAMA_MODEL`; if that model is not installed, it falls back to an installed one (a Llama model first), so you do not get a "not found" error.
 
 The AI only sees the passages the search found and must cite them. Every answer is checked automatically (citations must exist and every figure must appear in the cited passages), but AI can still make mistakes. **`.env` holds your secret key: it is git-ignored, so never commit or share it.**
 
@@ -103,6 +107,12 @@ python -m src.prepare_app_data           # tag every speech with a topic and wri
 python -m src.global_search build        # index every speech for "Search all MPs", about 5 minutes
 ```
 
+**Faster `score_pairs` with a free GPU.** On a laptop without an NVIDIA GPU, `score_pairs` is the slow step. You can run just that step on Google Colab (Runtime > Change runtime type > T4 GPU), where it takes a few minutes:
+
+1. Zip `src/` together with `data/qa_pairs.parquet`, `data/evasiveness_labels.parquet` and `data/evasiveness_label_features.parquet`, upload the zip to Colab and unzip it.
+2. Run `!python -m src.score_pairs` from the unzipped folder (`sentence-transformers` is already installed on Colab).
+3. Download `data/qa_pairs_scores.parquet`, put it in your local `data/` folder, and continue locally from `python -m src.rescore`. That step retrains the small classifier itself, so library versions do not need to match.
+
 Evaluation scripts for the report (`src.make_figures`, `src.run_retrieval_eval`, `src.run_commitment_eval`, `src.summarise_scores`) are described in Appendix A of the report.
 
 ## Tests
@@ -112,7 +122,7 @@ python tests/run_all.py          # everything, a few minutes
 python tests/run_all.py --fast   # quick offline checks only
 ```
 
-About 100 automatic checks cover: political-bloc and pledge rules, query cleaning, the "no clear match" cut-offs, citations and CSV export, the AI-answer safety checks (using fake model replies, so no key or network is needed), and the whole app driven with odd inputs (bad postcodes, empty or hostile text, very long queries, non-English text, an MP with almost no speeches, every screen).
+About 110 automatic checks cover: political-bloc and pledge rules, query cleaning, the "no clear match" cut-offs, citations and CSV export, the AI-answer safety checks (using fake model replies, so no key or network is needed), and the whole app driven with odd inputs (bad postcodes, empty or hostile text, very long queries, non-English text, an MP with almost no speeches, every screen, including Compare MPs and Parliament trends).
 
 ## Data and credits
 

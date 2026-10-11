@@ -37,9 +37,20 @@ def provider() -> dict | None:
         return {"name": "Anthropic", "model": os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")}
     host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
     try:
-        if requests.get(host + "/api/tags", timeout=1.0).ok:
-            return {"name": "Ollama (local)", "model": os.getenv("OLLAMA_MODEL", "llama3.2")}
-    except requests.RequestException:
+        tags = requests.get(host + "/api/tags", timeout=1.0)
+        if tags.ok:
+            wanted = os.getenv("OLLAMA_MODEL", "llama3.2")
+            # embedding-only models cannot write answers; older Ollama versions do not list capabilities, so keep those
+            installed = [
+                m.get("name", "") for m in tags.json().get("models", []) if "completion" in m.get("capabilities", ["completion"])
+            ]
+            if not installed:  # Ollama is running but has no usable model pulled, so AI answers stay off
+                return None
+            # asking for a model that is not pulled gives a 404, so fall back to an installed one (Llama first, it follows the citation rules well)
+            if wanted not in installed and f"{wanted}:latest" not in installed:
+                wanted = next((m for m in installed if m.startswith("llama")), installed[0])
+            return {"name": "Ollama (local)", "model": wanted}
+    except (requests.RequestException, ValueError):
         pass
     return None
 
