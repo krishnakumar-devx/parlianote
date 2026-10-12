@@ -33,7 +33,9 @@ pip install -r requirements.txt
 python scripts/download_data.py          # downloads about 600 MB of public data into data/
 ```
 
-Then build the app's data once (see [Rebuilding the data](#rebuilding-the-data)) and start the app:
+> **Note: the app cannot start straight after cloning.** Its data files (about 800 MB) and trained models are too big for GitHub, so they are not in this repository. After downloading the data, build them once on your own computer with the commands in [Rebuilding the data](#rebuilding-the-data). This takes roughly 1.5 to 2 hours, mostly the scoring step, which can be done in a few minutes on a free Google Colab GPU (see that section). You only need to do it once.
+
+Then build the app's data (see the note above) and start the app:
 
 ```bash
 streamlit run app/app.py                 # or double-click run_app.bat on Windows
