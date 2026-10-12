@@ -9,11 +9,11 @@ import streamlit as st
 
 from src import global_search as G
 from src import retrieval as R
+from src.blocs import bloc
 from src.commitment import commitment_type, split_sentences
 from src.topics import TOPIC_NAMES
 from src.ui import components as C
 from src.ui.config import EXAMPLE_TOPICS, HANSARD_HOME, NO_MATCH_TIPS
-from src.blocs import bloc
 from src.ui.data import cite, load_global, load_minister_directness, load_models, load_pairs, load_speeches, load_topic_counts, wilson
 from src.ui.search import clean_query, key_sentences, retrieve, tidy_query, usable_query
 
@@ -185,9 +185,7 @@ def ask_the_record(mp_key: str, info, sp: pd.DataFrame):
         )
         if len(years) > 1:
             with st.expander("Filter by year"):
-                year_range = st.slider(
-                    "Years", int(min(years)), int(max(years)), (int(min(years)), int(max(years))), key=f"years_{mp_key}"
-                )
+                year_range = st.slider("Years", int(min(years)), int(max(years)), (int(min(years)), int(max(years))), key=f"years_{mp_key}")
     if not q:
         C.example_buttons("Try one of these:", EXAMPLE_TOPICS[:5], "ex_mp_topic", "mp_q", fmt=lambda t: t.capitalize())
         return
@@ -454,7 +452,12 @@ def _minister_comparison():
     ]
     colours = alt.Scale(domain=["Labor", "Coalition", "Other"], range=[INK, GOLD, "#6b9ac4"])
     ranges = base.mark_rule(strokeWidth=2.5, opacity=0.45).encode(
-        x=alt.X("low:Q", axis=alt.Axis(format="%"), title="Answers scored as not directly addressing the question", scale=alt.Scale(domain=[0, 1])),
+        x=alt.X(
+            "low:Q",
+            axis=alt.Axis(format="%"),
+            title="Answers scored as not directly addressing the question",
+            scale=alt.Scale(domain=[0, 1]),
+        ),
         x2="high:Q",
         color=alt.Color("bloc:N", scale=colours, legend=alt.Legend(title=None, orient="top")),
         tooltip=tooltip,
@@ -473,7 +476,15 @@ def _minister_comparison():
     with st.expander("Show as a table"):
         # a plain table (not st.dataframe) so viewers cannot click a column header to rank the MPs
         shown = table[["label", "answers", "share", "low", "high", "first", "last"]].rename(
-            columns={"label": "MP", "answers": "Answers", "share": "Not direct", "low": "95% from", "high": "95% to", "first": "From", "last": "To"}
+            columns={
+                "label": "MP",
+                "answers": "Answers",
+                "share": "Not direct",
+                "low": "95% from",
+                "high": "95% to",
+                "first": "From",
+                "last": "To",
+            }
         )
         for col in ["Not direct", "95% from", "95% to"]:
             shown[col] = shown[col].map("{:.2f}".format)
@@ -530,7 +541,8 @@ def compare_mps(mps: pd.DataFrame):
                     yOffset=alt.YOffset("MP:N", sort=[C.display_name(i["name"]) for i in people]),
                     x=alt.X("share:Q", axis=alt.Axis(format="%"), title=None),
                     color=alt.Color(
-                        "MP:N", scale=alt.Scale(domain=[C.display_name(i["name"]) for i in people], range=[INK, GOLD]),
+                        "MP:N",
+                        scale=alt.Scale(domain=[C.display_name(i["name"]) for i in people], range=[INK, GOLD]),
                         legend=alt.Legend(title=None, orient="top"),
                     ),
                     tooltip=["MP", "Topic", alt.Tooltip("share:Q", format=".0%")],

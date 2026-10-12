@@ -49,7 +49,9 @@ C.hero(f"AI answers on · {provider['name']}" if provider else f"{len(mps)} MPs 
 st.radio(
     "What would you like to do?", MODES, horizontal=True, key="mode", label_visibility="collapsed", on_change=st.query_params.clear
 )  # a new screen starts with a clean address bar; each screen then writes its own shareable link
-footnote = f"AI answers: {provider['name']} ({provider['model']})." if provider else "AI answers are off; add a key to .env to turn them on."
+footnote = (
+    f"AI answers: {provider['name']} ({provider['model']})." if provider else "AI answers are off; add a key to .env to turn them on."
+)
 
 if st.session_state["mode"] != MODES[0]:
     {MODES[1]: views.search_all, MODES[2]: lambda: views.compare_mps(mps), MODES[3]: views.parliament_trends}[st.session_state["mode"]]()

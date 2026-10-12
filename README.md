@@ -85,11 +85,11 @@ src/ui/                 the web app's building blocks
 src/                    the analysis pipeline (pairing, features, models, evaluation, retrieval, AI answer)
 tests/                  automatic checks (see below)
 notebooks/              the phase-1 analysis notebook
-report/                 the technical report (Word and PDF) and the scripts that build it
+report/                 scripts that build the technical report document
 docs/                   the team insights document
 data/                   downloaded data, plus the small hand-labelled sets the report relies on
 results/                evaluation tables, figures and logs
-team_labelling/         sheet for independent annotation (to measure agreement between labellers)
+team_labelling/         the 45-question sheet teammates labelled independently (to measure agreement between labellers)
 scripts/download_data.py   fetches the public datasets
 ```
 
@@ -113,7 +113,13 @@ python -m src.global_search build        # index every speech for "Search all MP
 2. Run `!python -m src.score_pairs` from the unzipped folder (`sentence-transformers` is already installed on Colab).
 3. Download `data/qa_pairs_scores.parquet`, put it in your local `data/` folder, and continue locally from `python -m src.rescore`. That step retrains the small classifier itself, so library versions do not need to match.
 
-Evaluation scripts for the report (`src.make_figures`, `src.run_retrieval_eval`, `src.run_commitment_eval`, `src.summarise_scores`) are described in Appendix A of the report.
+Evaluation scripts (`src.make_figures`, `src.run_retrieval_eval`, `src.run_commitment_eval`, `src.summarise_scores`) write their tables and figures to `results/`; the top of each script says what it does.
+
+**Checking how much labellers agree.** Teammates filled in `team_labelling/labelling_sheet_*.xlsx`; this prints Cohen's kappa for each pair of labellers (the first labeller's answer key is kept out of the repository so it cannot influence others):
+
+```bash
+python -m src.compute_kappa team_labelling/labelling_sheet_Brian_shimmer.xlsx team_labelling/labelling_sheet_malavika.xlsx
+```
 
 ## Tests
 
@@ -132,7 +138,7 @@ About 110 automatic checks cover: political-bloc and pledge rules, query cleanin
 ## Limitations and responsible use
 
 - House of Representatives only, March 1998 to July 2025. The newest speaker for an area is treated as its MP, so seats that changed hands at the 2025 election need checking.
-- The directness score is **rough**: among questions from the other side it separates "not direct" from the rest about 68% of the time (guessing gives 58%). It was labelled by a single annotator and has not been independently validated. It describes how an answer is worded, not anyone's intent, and it must never be used to rank or judge individuals.
+- The directness score is **rough**: among questions from the other side it separates "not direct" from the rest about 68% of the time (guessing gives 58%). It was trained on labels from a single annotator. A later check on 45 questions labelled independently by two teammates found moderate agreement on "dodged the question or not" (kappa 0.47, 80% of answers) and weaker agreement on the three-way split (kappa 0.35), so the labels are subjective. It describes how an answer is worded, not anyone's intent, and it must never be used to rank or judge individuals.
 - Question and answer labels in the source data are only reliable from 2011.
 - Subject names are our reading of an automatic grouping and can be wrong.
 - This is a student project and is not affiliated with, or endorsed by, the Parliament of Australia. Always check quotes against the [official record](https://www.aph.gov.au/Parliamentary_Business/Hansard).

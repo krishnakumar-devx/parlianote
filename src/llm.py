@@ -41,9 +41,7 @@ def provider() -> dict | None:
         if tags.ok:
             wanted = os.getenv("OLLAMA_MODEL", "llama3.2")
             # embedding-only models cannot write answers; older Ollama versions do not list capabilities, so keep those
-            installed = [
-                m.get("name", "") for m in tags.json().get("models", []) if "completion" in m.get("capabilities", ["completion"])
-            ]
+            installed = [m.get("name", "") for m in tags.json().get("models", []) if "completion" in m.get("capabilities", ["completion"])]
             if not installed:  # Ollama is running but has no usable model pulled, so AI answers stay off
                 return None
             # asking for a model that is not pulled gives a 404, so fall back to an installed one (Llama first, it follows the citation rules well)

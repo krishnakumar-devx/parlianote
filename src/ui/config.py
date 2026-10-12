@@ -17,9 +17,20 @@ VIEWS = ["Overview", "Ask the record", "Question Time", "Promises", "About and l
 
 # Full party names for the abbreviations used in the record.
 PARTY_NAMES = {
-    "ALP": "Labor", "LIB": "Liberal", "NP": "Nationals", "NAT": "Nationals", "NATS WA": "Nationals WA", "IND": "Independent",
-    "GRN": "Greens", "KAP": "Katter's Australian Party", "CA": "Centre Alliance", "NXT": "Nick Xenophon Team",
-    "CLP": "Country Liberal Party", "PUP": "Palmer United Party", "CDP": "Christian Democratic Party", "PHON": "One Nation",
+    "ALP": "Labor",
+    "LIB": "Liberal",
+    "NP": "Nationals",
+    "NAT": "Nationals",
+    "NATS WA": "Nationals WA",
+    "IND": "Independent",
+    "GRN": "Greens",
+    "KAP": "Katter's Australian Party",
+    "CA": "Centre Alliance",
+    "NXT": "Nick Xenophon Team",
+    "CLP": "Country Liberal Party",
+    "PUP": "Palmer United Party",
+    "CDP": "Christian Democratic Party",
+    "PHON": "One Nation",
 }
 
 # One-click examples shown on the home screen.
