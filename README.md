@@ -6,6 +6,8 @@ Type your postcode to see your local MP (Member of Parliament), what they talk a
 
 Built for *36118 Applied Natural Language Processing* (UTS) by Group 11, Team Phoenix.
 
+Repository: <https://github.com/krishnakumar-devx/parlianote>
+
 ![Parlianote home screen](results/screens/fig_app_home.png)
 
 ## What you can do
@@ -33,7 +35,7 @@ pip install -r requirements.txt
 python scripts/download_data.py          # downloads about 600 MB of public data into data/
 ```
 
-> **Note: the app cannot start straight after cloning.** Its data files (about 800 MB) and trained models are too big for GitHub, so they are not in this repository. After downloading the data, build them once on your own computer with the commands in [Rebuilding the data](#rebuilding-the-data). This takes roughly 1.5 to 2 hours, mostly the scoring step, which can be done in a few minutes on a free Google Colab GPU (see that section). You only need to do it once.
+> **Note: the app cannot start straight after cloning or unzipping.** Its large data and model files (about 800 MB) are not included in the GitHub repository or in the submitted code zip, because they are too big. After downloading the data, build them once on your own computer with the commands in [Rebuilding the data](#rebuilding-the-data) (steps 2 to 6 of Appendix A in the report). This takes roughly 1.5 to 2 hours, mostly the scoring step, which can be done in a few minutes on a free Google Colab GPU (see that section). You only need to do it once.
 
 Then build the app's data (see the note above) and start the app:
 
