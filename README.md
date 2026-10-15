@@ -131,7 +131,7 @@ python tests/run_all.py          # everything, a few minutes
 python tests/run_all.py --fast   # quick offline checks only
 ```
 
-About 110 automatic checks cover: political-bloc and pledge rules, query cleaning, the "no clear match" cut-offs, citations and CSV export, the AI-answer safety checks (using fake model replies, so no key or network is needed), and the whole app driven with odd inputs (bad postcodes, empty or hostile text, very long queries, non-English text, an MP with almost no speeches, every screen, including Compare MPs and Parliament trends).
+116 automatic checks cover: political-bloc and pledge rules, query cleaning, the "no clear match" cut-offs, citations and CSV export, the AI-answer safety checks (using fake model replies, so no key or network is needed), and the whole app driven with odd inputs (bad postcodes, empty or hostile text, very long queries, non-English text, an MP with almost no speeches, every screen, including Compare MPs and Parliament trends).
 
 ## Data and credits
 
