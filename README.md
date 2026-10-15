@@ -87,9 +87,8 @@ src/ui/                 the web app's building blocks
 src/                    the analysis pipeline (pairing, features, models, evaluation, retrieval, AI answer)
 tests/                  automatic checks (see below)
 notebooks/              the phase-1 analysis notebook
-report/                 scripts that build the technical report document
 docs/                   the team insights document
-data/                   downloaded data, plus the small hand-labelled sets the report relies on
+data/                   downloaded data, plus the small labelled sets the report relies on
 results/                evaluation tables, figures and logs
 team_labelling/         the 45-question sheet teammates labelled independently (to measure agreement between labellers)
 scripts/download_data.py   fetches the public datasets
@@ -101,7 +100,7 @@ scripts/download_data.py   fetches the public datasets
 
 ```bash
 python -m src.build_pairs                # pair each Question Time question with its answer (16,256 pairs)
-python -m src.build_label_features       # features for the 120 hand-labelled pairs
+python -m src.build_label_features       # features for the 120 labelled pairs
 python -m src.train_lda                  # topic model, about 10 minutes
 python -m src.score_pairs                # score every pair, about 1 hour on CPU
 python -m src.rescore                    # apply the final friendly-question rule to those scores
@@ -138,6 +137,7 @@ About 110 automatic checks cover: political-bloc and pledge rules, query cleanin
 
 - **Hansard:** Katz, L., & Alexander, R. (2025). *A new, comprehensive database of all proceedings of the Australian Parliamentary Debates (1998-2025)*. Zenodo. <https://doi.org/10.5281/zenodo.17351233> (CC BY 4.0).
 - **Postcodes to electorates:** Matthew Proctor, <https://www.matthewproctor.com/australian_postcodes>. PO-box and business-only ranges are removed.
+- **Use of generative AI:** generative AI tools helped write and test the code and create the evaluation labels (directness, pledge and retrieval judgements). Only the directness labels were checked independently, by two teammates on 45 questions (`team_labelling/`, `src/run_agreement.py`).
 
 ## Limitations and responsible use
 
