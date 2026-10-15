@@ -1,0 +1,62 @@
+{
+ "pairwise": {
+  "annotator_1 (original labels) vs annotator_2 (Brian_shimmer)": {
+   "n": 45,
+   "agree_3class": 0.622,
+   "kappa_3class": 0.433,
+   "kappa_3class_linear_weighted": 0.557,
+   "agree_evasive_or_not": 0.867,
+   "kappa_evasive_or_not": 0.679,
+   "direct_vs_evasive_swaps": 0
+  },
+  "annotator_1 (original labels) vs annotator_3 (malavika)": {
+   "n": 45,
+   "agree_3class": 0.4,
+   "kappa_3class": 0.1,
+   "kappa_3class_linear_weighted": 0.256,
+   "agree_evasive_or_not": 0.711,
+   "kappa_evasive_or_not": 0.316,
+   "direct_vs_evasive_swaps": 2
+  },
+  "annotator_2 (Brian_shimmer) vs annotator_3 (malavika)": {
+   "n": 45,
+   "agree_3class": 0.578,
+   "kappa_3class": 0.354,
+   "kappa_3class_linear_weighted": 0.457,
+   "agree_evasive_or_not": 0.8,
+   "kappa_evasive_or_not": 0.475,
+   "direct_vs_evasive_swaps": 1
+  }
+ },
+ "model_vs_human": {
+  "annotator_2 (Brian_shimmer)": {
+   "n": 45,
+   "agree_3class": 0.511,
+   "kappa_3class": 0.265,
+   "kappa_3class_linear_weighted": 0.374,
+   "agree_evasive_or_not": 0.844,
+   "kappa_evasive_or_not": 0.591,
+   "direct_vs_evasive_swaps": 2,
+   "always_not_evasive_agree": 0.756
+  },
+  "annotator_3 (malavika)": {
+   "n": 45,
+   "agree_3class": 0.533,
+   "kappa_3class": 0.297,
+   "kappa_3class_linear_weighted": 0.384,
+   "agree_evasive_or_not": 0.822,
+   "kappa_evasive_or_not": 0.545,
+   "direct_vs_evasive_swaps": 3,
+   "always_not_evasive_agree": 0.733
+  }
+ },
+ "other_bloc_only_annotator_1_vs_2": {
+  "n": 27,
+  "agree_3class": 0.556,
+  "kappa_3class": 0.289,
+  "kappa_3class_linear_weighted": 0.421,
+  "agree_evasive_or_not": 0.778,
+  "kappa_evasive_or_not": 0.56,
+  "direct_vs_evasive_swaps": 0
+ }
+}

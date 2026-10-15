@@ -123,6 +123,8 @@ Evaluation scripts (`src.make_figures`, `src.run_retrieval_eval`, `src.run_commi
 python -m src.compute_kappa team_labelling/labelling_sheet_Brian_shimmer.xlsx team_labelling/labelling_sheet_malavika.xlsx
 ```
 
+`src.run_agreement` (same arguments) gives the fuller comparison used in the report: confusion matrix, the "dodged or not" decision, questions from the other side only, and how the directness model agrees with each human labeller. It writes `results/agreement.json`.
+
 ## Tests
 
 ```bash
