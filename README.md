@@ -35,7 +35,7 @@ pip install -r requirements.txt
 python scripts/download_data.py          # downloads about 600 MB of public data into data/
 ```
 
-> **Note: the app cannot start straight after cloning or unzipping.** Its large data and model files (about 800 MB) are not included in the GitHub repository or in the submitted code zip, because they are too big. After downloading the data, build them once on your own computer with the commands in [Rebuilding the data](#rebuilding-the-data) (steps 2 to 6 of Appendix A in the report). This takes roughly 1.5 to 2 hours, mostly the scoring step, which can be done in a few minutes on a free Google Colab GPU (see that section). You only need to do it once.
+> **Note: the app cannot start straight after cloning.** Its large data and model files (about 800 MB) are not included in the GitHub repository, because they are too big. After downloading the data, build them once on your own computer with the commands in [Rebuilding the data](#rebuilding-the-data) (steps 2 to 6 of Appendix A in the report). This takes roughly 1.5 to 2 hours, mostly the scoring step, which can be done in a few minutes on a free Google Colab GPU (see that section). You only need to do it once.
 
 Then build the app's data (see the note above) and start the app:
 
@@ -89,6 +89,7 @@ src/ui/                 the web app's building blocks
 src/                    the analysis pipeline (pairing, features, models, evaluation, retrieval, AI answer)
 tests/                  automatic checks (see below)
 notebooks/              the phase-1 analysis notebook
+Notebook_and_Poster/    the phase-1 notebook with its results saved, and the Part A poster
 docs/                   the team insights document
 data/                   downloaded data, plus the small labelled sets the report relies on
 results/                evaluation tables, figures and logs
