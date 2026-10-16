@@ -32,18 +32,30 @@ You need Python 3.10 or newer (developed on 3.13, also tested on 3.11). `require
 
 ```bash
 pip install -r requirements.txt
+```
+
+The app's large data files (about 800 MB) are too big for the repository, so there are two ways to get them.
+
+**Option A: ready-made data (about 5 minutes).** They are attached to the [v1.0 release](https://github.com/krishnakumar-devx/parlianote/releases/tag/v1.0) as `app-data.zip` (about 740 MB). Download it and unzip it in the project folder; it creates `app/data/` and `models/`:
+
+```bash
+curl -L -o app-data.zip https://github.com/krishnakumar-devx/parlianote/releases/download/v1.0/app-data.zip
+python -m zipfile -e app-data.zip .
+```
+
+**Option B: rebuild from the original public data (about 1.5 to 2 hours).** Download the Hansard data and postcode list, then build the app's data once with the commands in [Rebuilding the data](#rebuilding-the-data) (steps 2 to 6 of Appendix A in the report). Most of the time is the scoring step, which takes a few minutes on a free Google Colab GPU (see that section).
+
+```bash
 python scripts/download_data.py          # downloads about 600 MB of public data into data/
 ```
 
-> **Note: the app cannot start straight after cloning.** Its large data and model files (about 800 MB) are not included in the GitHub repository, because they are too big. After downloading the data, build them once on your own computer with the commands in [Rebuilding the data](#rebuilding-the-data) (steps 2 to 6 of Appendix A in the report). This takes roughly 1.5 to 2 hours, mostly the scoring step, which can be done in a few minutes on a free Google Colab GPU (see that section). You only need to do it once.
-
-Then build the app's data (see the note above) and start the app:
+Then start the app:
 
 ```bash
 streamlit run app/app.py                 # or double-click run_app.bat on Windows
 ```
 
-Open <http://localhost:8501>. The first search takes about 15 seconds while the language models load; after that, a search takes 1 to 2 seconds. Links such as `http://localhost:8501/?postcode=2088` open a screen directly, and the address bar updates as you search so you can share a result.
+Open <http://localhost:8501>. The first search takes about 15 seconds (up to a minute on a busy laptop) while the language models load; after that, a search takes 1 to 2 seconds. Links such as `http://localhost:8501/?postcode=2088` open a screen directly, and the address bar updates as you search so you can share a result.
 
 ### Optional: AI-written answers
 
