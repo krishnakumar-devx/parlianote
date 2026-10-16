@@ -30,6 +30,7 @@ df = df.sort_values(["date", "order"]).reset_index(drop=True)
 qa = df[((df["question"] == "1") | (df["answer"] == "1")) & (df["q_in_writing"] != "1")].copy()
 qa = qa[qa["interject"] != "1"].reset_index(drop=True)
 
+# Walk each sitting day in order: pair each question with the next answer before the next question.
 pairs = []
 for date, g in qa.groupby("date", sort=True):
     g = g.sort_values("order").reset_index(drop=True)
@@ -68,6 +69,7 @@ for date, g in qa.groupby("date", sort=True):
                 continue
         i += 1
 
+# Word counts and a running ID for each pair.
 p = pd.DataFrame(pairs)
 p["q_words"] = p["q_text"].str.split().str.len()
 p["a_words"] = p["a_text"].str.split().str.len()

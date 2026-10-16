@@ -13,6 +13,7 @@ from src.topics import TOPIC_NAMES
 
 sp = pd.read_parquet("app/data/speeches.parquet", columns=["year", "topic", "party"])
 lda = LdaModel.load("models/lda_model.gensim")
+# Speeches under 80 words have no topic (-1).
 sub = sp[sp["topic"] >= 0]
 counts = sub["topic"].value_counts().sort_index()
 rows = [
@@ -29,6 +30,7 @@ pd.DataFrame(rows).to_csv("results/topic_summary.csv", index=False)
 print(pd.DataFrame(rows)[["topic", "name", "speeches", "share"]].to_string(index=False))
 print("speeches with a topic:", len(sub), "of", len(sp), "; no topic (<80 words):", (sp["topic"] < 0).sum())
 
+# Each year's topic shares add up to 1, for the stacked chart.
 share = sub.groupby(["year", "topic"]).size().unstack(fill_value=0)
 share = share.div(share.sum(axis=1), axis=0)
 share.columns = [TOPIC_NAMES[c] for c in share.columns]

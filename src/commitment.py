@@ -2,6 +2,7 @@
 
 import re
 
+# Pledge cues such as 'we will' and 'are committed to'.
 FIRM = re.compile(
     r"\b(we|i|the government|this government|our government|the coalition|labor|the minister)\s+"
     r"(will|shall|are going to|is going to|am going to|have committed to|has committed to|are committed to|"
@@ -13,6 +14,7 @@ GUARANTEE = re.compile(
     r"\b(we|i) (will not|won't)\b",
     re.I,
 )
+# Hedges ('will consider', 'in due course') turn a pledge into a vague intention.
 HEDGE = re.compile(
     r"\b(consider(ing)?|look(ing)? (at|into)|examin(e|ing)|review(ing)?|in due course|"
     r"will be (receiving|taking) advice|take (that|it) on notice|we'll see|wait for|if elected)\b",
@@ -21,6 +23,7 @@ HEDGE = re.compile(
 # someone else's words ("he said: we will ...") are not a pledge by the speaker
 REPORTED = re.compile(r"\b(he|she|they|you|\w+) (said|says|told|claimed|announced)\b|^on \d+ \w+,", re.I)
 OWN_WORDS = re.compile(r"\b(i|we) (said|have said|told|promised)\b", re.I)
+# A pledge is 'specific' if it has a number, date or amount that could be checked later.
 SPECIFIC = re.compile(
     r"(\d|\$|\bby (the end of )?(next|this|20\d\d)|\bfrom (1 )?(january|july|october)|"
     r"\bevery (week|year|month)|\bper cent\b)",

@@ -12,6 +12,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 from src.blocs import bloc
 
+# Wording cues: attacking the other side, pointing to an earlier answer, thanking the questioner, opening with yes/no.
 ATTACK = re.compile(
     r"\b(those opposite|members opposite|the opposition|opposition leader|leader of the opposition|"
     r"shadow (treasurer|minister)|labor party|the labor|the coalition|the liberal|the greens)\b",
@@ -39,6 +40,7 @@ def chunk_words(text: str, size: int = 100, max_chunks: int = 6):
 
 def lexical_features(df: pd.DataFrame) -> pd.DataFrame:
     """Hand-built cues from each question-answer pair: attack phrases, 'see my earlier answer', digits, lengths, same-bloc flag."""
+    # Only the first 100 words of an answer are used, as when the labels were assigned.
     a100 = df["a_text"].map(lambda t: first_words(t, 100))
     out = pd.DataFrame(index=df.index)
     out["attack"] = a100.map(lambda t: len(ATTACK.findall(t)))
@@ -75,6 +77,7 @@ def semantic_features(df: pd.DataFrame, model, batch_size: int = 64) -> pd.DataF
         owner.extend([i] * len(cs))
     c_emb = model.encode(chunks, batch_size=batch_size, normalize_embeddings=True, show_progress_bar=False)
     owner = np.array(owner)
+    # Cosine similarity (the embeddings are normalised) between the question and each answer chunk.
     sims = np.einsum("ij,ij->i", q_emb[owner], c_emb)
     first_sim, max_sim, mean_sim = (np.zeros(len(df)) for _ in range(3))
     for i in range(len(df)):
@@ -91,6 +94,7 @@ def cross_encoder_features(df: pd.DataFrame, ce, batch_size: int = 32) -> pd.Dat
         for c in chunk_words(a):
             pairs.append((qq, c))
             owner.append(i)
+    # Score every 100-word answer chunk against the question, then summarise per pair.
     scores = np.asarray(ce.predict(pairs, batch_size=batch_size, show_progress_bar=False))
     owner = np.array(owner)
     first, mx, mean = (np.zeros(len(df)) for _ in range(3))

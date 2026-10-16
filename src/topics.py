@@ -10,6 +10,7 @@ except LookupError:
     nltk.download("stopwords", quiet=True)
     _STOP = set(stopwords.words("english"))
 
+# Words that are frequent in Parliament but say nothing about a topic.
 PARL_STOP = {
     "member",
     "members",

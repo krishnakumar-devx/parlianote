@@ -9,6 +9,7 @@ from src.evasion import lexical_features, overlap_feature, semantic_features, cr
 
 df = pd.read_parquet("data/evasiveness_labels.parquet").reset_index(drop=True)
 y = df["label"].values
+# Three feature families: wording cues, embedding similarity, cross-encoder relevance.
 lex = lexical_features(df)
 lex["overlap"] = overlap_feature(df)
 sem = semantic_features(df, SentenceTransformer("all-MiniLM-L6-v2"))

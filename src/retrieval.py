@@ -20,6 +20,7 @@ def tokens(text: str):
 
 def make_passages(sp: pd.DataFrame, size: int = 110, stride: int = 90) -> pd.DataFrame:
     """Split each speech into overlapping ~110-word windows, keeping the citation fields."""
+    # Overlapping windows, so a sentence cut at one boundary appears whole in the next passage.
     rows = []
     for r in sp[sp["words"] >= 25].itertuples():
         w = r.body.split()
@@ -36,6 +37,7 @@ def build_bm25(ps: pd.DataFrame) -> BM25Okapi:
 def bm25_search(ps, bm, query, k=60, year_range=None) -> pd.DataFrame:
     """The top-k passages by BM25 keyword score for the query, optionally within a year range."""
     scores = bm.get_scores(tokens(query))
+    # Passages outside the year range get -1 and are dropped below.
     if year_range:
         yrs = pd.to_datetime(ps["date"]).dt.year.values
         scores = np.where((yrs >= year_range[0]) & (yrs <= year_range[1]), scores, -1)
@@ -50,12 +52,14 @@ def rerank(ce, query, cand: pd.DataFrame, k_final: int = 8) -> pd.DataFrame:
     if cand.empty:
         return cand
     cand = cand.copy()
+    # The cross-encoder reads query and passage together: slower than BM25 but more accurate.
     cand["rerank"] = ce.predict([(query, t) for t in cand["text"]], batch_size=32, show_progress_bar=False)
     return cand.sort_values("rerank", ascending=False).head(k_final).reset_index(drop=True)
 
 
 def dense_search(ps, passage_emb, bi, query, k=8) -> pd.DataFrame:
     """Nearest passages by embedding similarity (used only in the retrieval comparison, not in the app)."""
+    # Embed the query and every candidate sentence, then keep the closest sentences.
     q = bi.encode([query], normalize_embeddings=True, show_progress_bar=False)
     sims = passage_emb @ q.ravel()
     top = np.argsort(-sims)[:k]

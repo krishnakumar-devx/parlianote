@@ -19,6 +19,7 @@ def infer(texts):
     """Give each text its most likely topic. Returns [(topic, probability)], with (-1, 0.0) if no usable words."""
     out = []
     for t in texts:
+        # Keep only words in the topic model's vocabulary; a speech with none gets topic -1.
         bow = _DIC.doc2bow(tokenize(t))
         if not bow:
             out.append((-1, 0.0))

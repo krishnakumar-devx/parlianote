@@ -7,6 +7,7 @@ def wilson(k: int, n: int, z: float = 1.96):
     """95% confidence interval for a proportion k/n (Wilson, 1927). More reliable than the textbook formula for small samples."""
     if n == 0:
         return 0.0, 0.0
+    # Wilson score interval.
     p = k / n
     d = 1 + z * z / n
     centre = (p + z * z / (2 * n)) / d

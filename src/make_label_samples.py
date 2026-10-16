@@ -1,4 +1,4 @@
-"""Draw the two samples that were hand-labelled (same seeds as used for the report).
+"""Draw the two samples that were labelled (same seeds as used for the report).
 
 * 150 candidate Question Time pairs, ~10 per year 2011-2025; the first 120 were labelled -> data/evasiveness_labels.parquet
 * 90 answer sentences (45 flagged by the pledge rules, 45 not) -> data/commitment_sample.parquet, gold labels in data/commitment_gold.txt
@@ -35,6 +35,7 @@ def is_commitment_v1(sentence):
     return "N"
 
 
+# Pairs: about 10 per year for 2011-2025 (seed 11). Sentences: 45 flagged and 45 not flagged by the v1 rules.
 p = pd.read_parquet("data/qa_pairs.parquet")
 q = p[(p["q_words"] >= 8) & (p["a_words"] >= 15)]
 s = q.groupby("year", group_keys=False).apply(lambda g: g.sample(n=min(len(g), 10), random_state=11))

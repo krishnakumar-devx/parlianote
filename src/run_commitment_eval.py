@@ -1,4 +1,4 @@
-"""Evaluate pledge detectors on the 90 hand-labelled sentences (gold: data/commitment_gold.txt).
+"""Evaluate pledge detectors on the 90 labelled sentences (gold: data/commitment_gold.txt).
 
 The sample is stratified: 45 sentences flagged and 45 not flagged by the FIRST version of the rules (3.79% of the
 33,761 sentences in the 2,500 sampled answers were flagged by that version). Population estimates therefore weight each
@@ -17,6 +17,7 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 sys.path.insert(0, ".")
 from src.commitment import is_commitment, commitment_type
 
+# The sample over-represents flagged sentences, so each one is weighted by its stratum's share of the real data.
 SHARE_FLAGGED_V1 = 1280 / 33761
 GOLD = dict(line.split() for line in open("data/commitment_gold.txt"))
 s = pd.read_parquet("data/commitment_sample.parquet")
@@ -54,6 +55,7 @@ out["specific-pledge detector (rules + specificity cue)"] = {
     "gold_specific": int(firm_gold.sum()),
 }
 
+# Comparison model: logistic regression on sentence embeddings, repeated 5-fold cross-validation.
 emb = SentenceTransformer("all-MiniLM-L6-v2").encode(s["sent"].tolist(), normalize_embeddings=True, show_progress_bar=False)
 y = s["gold"].values
 accs, f1s = [], []
