@@ -2,7 +2,7 @@
 
 Usage: python -m src.run_agreement team_labelling/labelling_sheet_Brian_shimmer.xlsx team_labelling/labelling_sheet_malavika.xlsx
 
-The first labeller is the original label set (team_labelling/_answer_key_DO_NOT_SHARE.csv, made with an AI assistant); each sheet
+The first labeller is the original label set (team_labelling/original_labels.csv, made with an AI assistant); each sheet
 given on the command line adds one more labeller. For every pair of labellers it prints agreement and Cohen's kappa for the
 three-way labels (D, P, E) and for the two-way decision "evasive or not". It also retrains the directness model on the pairs
 that were NOT in the sheet and checks how well it agrees with each human labeller. Writes results/agreement.json.
@@ -45,7 +45,7 @@ def compare(a: pd.Series, b: pd.Series) -> dict:
 
 
 def main(sheets: list[str]) -> None:
-    key = pd.read_csv("team_labelling/_answer_key_DO_NOT_SHARE.csv").set_index("item")
+    key = pd.read_csv("team_labelling/original_labels.csv").set_index("item")
     labels = pd.read_parquet("data/evasiveness_labels.parquet").reset_index(drop=True)
     feats = pd.read_parquet("data/evasiveness_label_features.parquet").reset_index(drop=True)
     feats["pair_id"], feats["label"] = labels["pair_id"].values, labels["label"].values

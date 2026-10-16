@@ -118,7 +118,7 @@ python -m src.global_search build        # index every speech for "Search all MP
 
 Evaluation scripts (`src.make_figures`, `src.run_retrieval_eval`, `src.run_commitment_eval`, `src.summarise_scores`) write their tables and figures to `results/`; the top of each script says what it does.
 
-**Checking how much labellers agree.** Teammates filled in `team_labelling/labelling_sheet_*.xlsx`; this prints Cohen's kappa for each pair of labellers (the first labeller's answer key is kept out of the repository so it cannot influence others):
+**Checking how much labellers agree.** Teammates filled in `team_labelling/labelling_sheet_*.xlsx`; this prints Cohen's kappa for each pair of labellers (the first labeller's labels, made with an AI assistant, are in `team_labelling/original_labels.csv`):
 
 ```bash
 python -m src.compute_kappa team_labelling/labelling_sheet_Brian_shimmer.xlsx team_labelling/labelling_sheet_malavika.xlsx

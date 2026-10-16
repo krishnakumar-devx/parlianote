@@ -16,8 +16,6 @@ results/screens/app_*.jpg
 !data/commitment_gold.txt
 !data/retrieval_judgements.txt
 
-# Do not publish the independent-annotation answer key (it would bias teammates' labels)
-team_labelling/_answer_key_DO_NOT_SHARE.csv
 results/retrieval_pool_methods_HIDDEN.csv
 
 # Python / Node / editor
