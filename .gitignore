@@ -2,6 +2,7 @@
 data/*.parquet
 data/*.csv
 data/*.npy
+data/*.zip
 app/data/
 models/
 results/_*

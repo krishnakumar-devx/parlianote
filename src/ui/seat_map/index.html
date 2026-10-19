@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500&display=swap">
+<style>
+  /* The seat map. Same paper, ink and highlighter as the rest of the app (src/ui/components.py). */
+  :root {--paper:#f7f5f0; --card:#fffdf8; --ink:#16140f; --muted:#5f5a50; --line:#d9d4c7; --hl:#ffe45c;}
+  html, body {margin:0; height:100%; background:var(--paper); color:var(--ink); font-family:'Inter', system-ui, sans-serif;}
+  #panel {position:relative; width:100%; height:100%; overflow:hidden; perspective:1400px; perspective-origin:50% 35%;
+          border-top:2px solid var(--ink); box-sizing:border-box;}
+  /* One tilted plane holding one SVG: a single graphics layer, so the map stays light enough for phones. The plane is bigger
+     than the panel and centred on it (more room above, where the tilt shows further), and it clips what it draws. */
+  #plane {position:absolute; left:-40%; top:-80%; width:180%; height:260%; transform-origin:50% 50%; z-index:1;}
+  #map {display:block; width:100%; height:100%; overflow:hidden;}
+  /* caption and footer sit above the tilted map (the raised layers would otherwise draw over them) */
+  .label, #foot {z-index:2;}
+  .label {position:absolute; left:0; top:10px; padding:6px 14px 8px 0; background:var(--paper); display:flex; flex-direction:column;
+          gap:3px; pointer-events:none; max-width:70%; border-bottom:1px solid var(--ink);}
+  .label.measure {visibility:hidden;}
+  .crumbs {display:flex; flex-wrap:wrap; gap:0 6px; font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--muted);}
+  .crumbs .seat {color:var(--ink);}
+  .name {font-family:'Newsreader', Georgia, serif; font-size:30px; font-weight:500; line-height:1.05; letter-spacing:-.02em;}
+  /* two MPs: one row each, with a key in the colour of their seat's top */
+  .name.pair {display:flex; flex-direction:column; gap:5px; font-size:22px;}
+  .name.pair .row {display:flex; align-items:center; gap:9px;}
+  .name.pair .key {flex:none; width:13px; height:13px; border:1.5px solid var(--ink); box-sizing:border-box;}
+  .name.pair .key.gone {border-style:dashed;}
+  .name.pair .who {font-family:'Inter', system-ui, sans-serif; font-size:12px; letter-spacing:0; color:var(--muted);}
+  .note {font-size:12px; line-height:1.4; color:var(--muted);}
+  #foot {position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:space-between; align-items:center; gap:8px;
+         font-size:11px; color:var(--muted); background:var(--paper); border-top:1px solid var(--line);}
+  #replay {font:inherit; font-size:12px; color:var(--ink); background:none; border:0; padding:8px 0; cursor:pointer;
+           text-decoration:underline; text-decoration-color:#e0c200; text-decoration-thickness:2px; text-underline-offset:3px;}
+  #replay:focus-visible {outline:3px solid var(--hl);}
+  /* the idle tour: a small "touring" badge, and the MP's quote from the record under the map */
+  #tourbadge {display:flex; align-items:center; gap:7px; padding:8px 0; font-size:10.5px; font-weight:600; letter-spacing:.08em;
+              text-transform:uppercase; color:var(--ink);}
+  #tourbadge[hidden] {display:none;}
+  #tourbadge i {width:8px; height:8px; border-radius:50%; background:#e0c200; animation:pulse 1.6s ease-in-out infinite;}
+  @keyframes pulse {0%, 100% {opacity:1;} 50% {opacity:.25;}}
+  #tourquote {position:absolute; left:0; right:0; bottom:38px; z-index:2; background:var(--paper); border-left:3px solid var(--ink);
+              padding:8px 12px 9px 13px; opacity:0; transition:opacity .7s ease; pointer-events:none;}
+  #tourquote.on {opacity:1;}
+  #tourquote p {margin:0; font-family:'Newsreader', Georgia, serif; font-size:16px; line-height:1.45;}
+  #tourquote div {margin-top:4px; font-size:11px; line-height:1.4; color:var(--muted);}
+  #tourquote b {color:var(--ink); font-weight:600;}
+  @media (max-width: 420px) {.name {font-size:24px;} .name.pair {font-size:19px;} #tourquote p {font-size:14px;}}
+</style>
+</head>
+<body>
+<div id="panel" role="img" aria-label="Map of Australia">
+  <div id="plane"><svg id="map" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    <defs id="defs"></defs><g id="g-base"></g><g id="g-states"></g><g id="g-seats"></g><g id="g-trace"></g></svg></div>
+  <div class="label" id="label" aria-hidden="true">
+    <div class="crumbs"><span>Australia</span><span class="state"></span><span class="seat"></span></div>
+    <div class="name"></div>
+    <div class="note"></div>
+  </div>
+  <div class="label measure" id="measure" aria-hidden="true">
+    <div class="crumbs"><span>Australia</span><span class="state"></span><span class="seat"></span></div>
+    <div class="name"></div>
+    <div class="note"></div>
+  </div>
+  <div id="tourquote" aria-live="polite"><p></p><div></div></div>
+  <div id="foot"><span>Boundaries used at the 2025 election (AEC)</span><button id="replay" type="button" hidden>Replay</button>
+    <span id="tourbadge" hidden><i></i>Touring &middot; touch to explore</span></div>
+</div>
+<script>
+(function () {
+  // How it works: every state that is lifted and every seat that is raised is a live "layer" with its own lift value. Each new
+  // scene from Python (which states lift, which seats rise, the caption) is reached by one or two "legs": what is leaving sinks,
+  // the camera flies (pulling back on long trips), and what is arriving rises. A new scene mid-flight starts from where it is.
+  // Height is drawn in 2D: each raised layer is a copy of its shape, shifted on the tilted plane by exactly as much as a real 3D
+  // lift would move it on screen. Everything stays in one SVG on one plane (one graphics layer); stacking a separate 3D layer
+  // per wall used so much memory that phones (Safari) gave up on the page.
+  const NS = 'http://www.w3.org/2000/svg';
+  const panel = document.getElementById('panel'), plane = document.getElementById('plane'), foot = document.getElementById('foot');
+  const svg = document.getElementById('map'), defs = document.getElementById('defs');
+  const gBase = document.getElementById('g-base'), gStates = document.getElementById('g-states');
+  const gSeats = document.getElementById('g-seats'), gTrace = document.getElementById('g-trace');
+  const PW = 1.8, PH = 2.6;  // the plane's size relative to the panel (must match #plane in the CSS)
+  const replay = document.getElementById('replay');
+  const STATE_LIFT = 14, SEAT_LIFT = 34, K = 7, N = 14;
+  const PIN = 7;  // px: below this a seat is marked by a round column so it can be seen from far away
+
+  let G = null, scene = null, sig = '', raf = 0, uid = 0, height = 0, opening = 0;
+  const states = new Map(), seats = new Map();
+  const cam = { cx: 0, cy: 0, w: 1, tilt: 0, rot: 0, fade: 0 };
+  const trace = { from: null, to: null, f: 0, op: 0, path: null, dot: null };
+
+  // ---- drawing helpers
+  const LINE = { 'vector-effect': 'non-scaling-stroke', 'stroke-linejoin': 'round' };  // strokes stay hairline at any zoom
+  function shape(d) {  // a shape defined once; its copies (walls, tops, shadows) are <use> elements that set their own colours
+    return el('path', { id: 'shape-' + ++uid, d, ...LINE }, defs);
+  }
+  const copy = (shapeEl, style, parent) => el('use', { href: '#' + shapeEl.id, style }, parent);
+  function dropLayer(L) {
+    L.g.remove();
+    L.defs.forEach((d) => d.remove());
+  }
+  function el(name, attrs, parent) {
+    const e = document.createElementNS(NS, name);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    parent.appendChild(e);
+    return e;
+  }
+  const mix = (a, b, f) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * f)).join(',')})`;
+  const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+  const aspect = () => panel.clientHeight / Math.max(panel.clientWidth, 1);
+  const fit = (w, h, pad) => Math.max(w, h / aspect()) * pad;
+  const box = (b) => {  // [x, y, w, h] around one or more bounding boxes
+    const x = Math.min(...b.map((v) => v[0])), y = Math.min(...b.map((v) => v[1]));
+    return [x, y, Math.max(...b.map((v) => v[0] + v[2])) - x, Math.max(...b.map((v) => v[1] + v[3])) - y];
+  };
+  const centre = (b) => [b[0] + b[2] / 2, b[1] + b[3] / 2];
+
+  // ---- layers
+  function stateLayer(code, s) {
+    const outline = shape(s.d);
+    const L = { code, lift: 0, on: 0, defs: [outline], g: el('g', {}, gStates) };
+    L.shadow = copy(outline, 'fill:#16140f;fill-opacity:0;stroke:none', L.g);
+    L.walls = Array.from({ length: K }, (_, i) => copy(outline, `fill:${mix([200, 193, 177], [230, 224, 211], i / (K - 1))};stroke:#a59d8b;stroke-width:.4px`, L.g));
+    L.top = el('g', {}, L.g);
+    copy(outline, 'fill:#fffdf8;stroke:#16140f;stroke-width:1.3px', L.top);
+    el('path', { d: s.seats, style: 'fill:none;stroke:#d3ccbc;stroke-width:.7px', ...LINE }, L.top);
+    states.set(code, L);
+    return L;
+  }
+  function seatLayer(seat) {
+    const outline = shape(seat.d);
+    const L = { name: seat.name, state: seat.state, lift: 0, hl: 0, size: Math.max(seat.bbox[2], seat.bbox[3]), tops: '' };
+    L.defs = [outline];
+    L.g = el('g', {}, gSeats);
+    const [cx, cy] = centre(seat.bbox);
+    L.shadow = copy(outline, 'fill:#16140f;fill-opacity:0;stroke:none', L.g);
+    L.walls = [];
+    L.pins = [];
+    for (let i = 0; i < N; i++) {
+      const top = i === N - 1;
+      const style = `fill:${top ? '#ffe45c' : mix([22, 20, 15], [70, 66, 55], i / (N - 1))};stroke:#16140f;stroke-width:${top ? 1.5 : 0.5}px`;
+      const wall = el('g', {}, L.g);
+      copy(outline, style, wall);
+      L.pins.push(el('circle', { cx, cy, r: 0, style, ...LINE }, wall));
+      L.walls.push(wall);
+    }
+    seats.set(seat.name, L);
+    return L;
+  }
+  function setTops(L, tops) {  // the top's colour: one MP's, or split half and half when two MPs held the same seat
+    const key = tops.join();
+    if (L.tops === key) return;
+    L.tops = key;
+    const top = L.walls[N - 1];
+    let fill = tops[0];
+    if (tops.length > 1) {
+      const id = 'shared-' + ++uid;
+      const grad = el('linearGradient', { id, x1: 0, y1: 0, x2: 1, y2: 1 }, defs);
+      tops.forEach((t) => el('stop', { offset: 0.5, 'stop-color': t }, grad));
+      L.defs.push(grad);
+      fill = `url(#${id})`;
+    }
+    for (const part of top.querySelectorAll('use, circle')) part.style.fill = fill;
+  }
+
+  // ---- caption: the breadcrumb's state appears with the state, the name (or the two MPs' rows) with the seat
+  const real = document.getElementById('label'), meas = document.getElementById('measure');
+  const part = (root, sel) => root.querySelector(sel);
+  function writeState(root, c) { part(root, '.state').textContent = c.state ? '› ' + c.state : ''; }
+  function writeName(root, c) {
+    part(root, '.seat').textContent = c.seat ? '› ' + c.seat : '';
+    const name = part(root, '.name');
+    name.replaceChildren();
+    name.classList.toggle('pair', c.rows.length > 0);
+    if (c.rows.length) {
+      for (const r of c.rows) {
+        const row = document.createElement('div'), key = document.createElement('i'), seatName = document.createElement('span'), who = document.createElement('span');
+        row.className = 'row';
+        key.className = r.gone ? 'key gone' : 'key';  // dashed: no seat of theirs is drawn, only the state
+        key.style.background = r.top;
+        seatName.textContent = r.label;
+        who.className = 'who';
+        who.textContent = r.who;
+        row.append(key, seatName, who);
+        name.appendChild(row);
+      }
+    } else name.textContent = c.name;
+    part(root, '.note').textContent = c.note;
+  }
+  const nameKey = (c) => JSON.stringify([c.seat, c.name, c.rows, c.note]);
+  const cap = { st: { op: 0, shown: null }, nm: { op: 0, shown: null } };
+  function captionHeight(B) {  // the caption's full height for scene B, measured off-screen (the two-MP view keeps the map clear of it)
+    writeState(meas, B.caption);
+    writeName(meas, B.caption);
+    return meas.offsetTop + meas.offsetHeight;
+  }
+
+  // ---- where the camera ends up for a scene
+  const FULL = () => ({ cx: G.w / 2, cy: G.h / 2, w: fit(G.w, G.h, 1.04), tilt: 0, rot: 0 });
+  function stateView(B, withLabel, tilt = withLabel ? 40 : 30) {
+    const [x, y, w, h] = box(Object.values(B.states).map((s) => s.bbox));
+    const v = { cx: x + w / 2, cy: y + h / 2, w: fit(w, h, 1.3), tilt, rot: -6 };
+    if (B.mode !== 'pair') return v;
+    // Compare MPs: allow for some of the tilt's flattening, and keep the state(s) clear of the two-row caption,
+    // beside it on a wide panel, below it on a narrow one (a phone).
+    const flat = (1 + Math.cos((tilt * Math.PI) / 180)) / 2, W = panel.clientWidth;
+    if (W >= 600) { v.w = fit(w, h * flat, 1.3); v.cx -= 0.07 * v.w; return v; }
+    const capPx = captionHeight(B), free = Math.max(panel.clientHeight - capPx - foot.offsetHeight, 1);
+    v.w = Math.max(w, (h * flat * W) / free) * 1.3;
+    v.cy -= ((capPx - foot.offsetHeight) / 2) * (v.w / W);
+    return v;
+  }
+  function seatView(B) {
+    const [x, y, w, h] = box(B.seats.map((s) => s.bbox));
+    const size = Math.max(w, h / aspect());
+    const pad = 1.7 + 3.8 * clamp((60 - size) / 55, 0, 1);  // small city seats get room to show their neighbours
+    return { cx: x + w / 2, cy: y + h / 2, w: size * pad, tilt: 55, rot: -10 };
+  }
+  function endView(B) {
+    if (B.mode === 'flat') return FULL();
+    if (!B.seats.length) return stateView(B, true);
+    return B.close ? seatView(B) : { ...stateView(B, true, 50), rot: -8 };  // two states: keep both in view as the seats rise
+  }
+  function focus(B) {  // the point a single-MP scene is about, for the flight-path trace
+    if (!B || B.mode !== 'single') return null;
+    return centre(B.seats.length ? B.seats[0].bbox : box(Object.values(B.states).map((s) => s.bbox)));
+  }
+
+  // ---- the camera's path: a smooth zoom (van Wijk and Nuij) that pulls back on long trips and dives in again
+  function zoomPath(p0, p1) {
+    const rho = Math.SQRT2, [ux0, uy0, w0] = p0, [ux1, uy1, w1] = p1, dx = ux1 - ux0, dy = uy1 - uy0, d2 = dx * dx + dy * dy;
+    if (d2 < 1e-9) {
+      const S = Math.log(w1 / w0) / rho;
+      return (t) => [ux0 + t * dx, uy0 + t * dy, w0 * Math.exp(rho * t * S)];
+    }
+    const d1 = Math.sqrt(d2);
+    const b0 = (w1 * w1 - w0 * w0 + 4 * d2) / (2 * w0 * 2 * d1), b1 = (w1 * w1 - w0 * w0 - 4 * d2) / (2 * w1 * 2 * d1);
+    const r0 = Math.log(Math.sqrt(b0 * b0 + 1) - b0), r1 = Math.log(Math.sqrt(b1 * b1 + 1) - b1), S = (r1 - r0) / rho;
+    return (t) => {
+      const s = t * S, u = (w0 / (2 * d1)) * (Math.cosh(r0) * Math.tanh(rho * s + r0) - Math.sinh(r0));
+      return [ux0 + u * dx, uy0 + u * dy, (w0 * Math.cosh(r0)) / Math.cosh(rho * s + r0)];
+    };
+  }
+
+  // ---- one leg of a move
+  const io = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  const back = (x) => 1 + 2.4 * Math.pow(x - 1, 3) + 1.4 * Math.pow(x - 1, 2);  // eases in with a little overshoot: the "pop"
+  function leg(B, kind, view, ms, index, legs, done) {
+    const final = kind !== 'state' || !B.seats.length;
+    const inScene = new Set(Object.keys(B.states)), seatNames = new Set(B.seats.map((s) => s.name));
+    const st0 = new Map([...states].map(([k, L]) => [k, { lift: L.lift, on: L.on }]));
+    const se0 = new Map([...seats].map(([k, L]) => [k, { lift: L.lift, hl: L.hl }]));
+    const stTo = (k) => (kind !== 'exit' && inScene.has(k) ? { lift: STATE_LIFT, on: 1 } : { lift: 0, on: 0 });
+    const seTo = (k, now) => {
+      if (kind === 'exit' || !seatNames.has(k)) return { lift: 0, hl: 0 };
+      if (kind === 'seat') return { lift: SEAT_LIFT, hl: 1 };
+      return now.lift > SEAT_LIFT / 2 ? { lift: SEAT_LIFT, hl: 1 } : { lift: 0, hl: 0 };  // a seat already up stays up; the rest wait
+    };
+    const leaving = [...st0].some(([k, v]) => v.lift > 0.5 && stTo(k).lift === 0) || [...se0].some(([k, v]) => v.lift > 0.5 && seTo(k, v).lift === 0);
+    const c0 = { ...cam }, path = zoomPath([c0.cx, c0.cy, c0.w], [view.cx, view.cy, view.w]);
+    const peak = Math.max(...[0.25, 0.5, 0.75].map((t) => path(t)[2])) / Math.max(c0.w, view.w);  // how far the camera pulls back
+    const dip = peak > 1.2 ? -Math.min(22, 14 * Math.log2(peak)) : 0;  // flatten the tilt a little while it is pulled back
+    const fadeTo = kind === 'exit' || B.mode === 'flat' ? 0 : 1;
+    const [camS, camE] = leaving ? [0.15, 0.88] : [0.03, 0.82];
+
+    // caption: fade out what is changing, swap it while it is invisible, fade the new one in near the end
+    const c = B.caption, stKey = c.state, nmKey = nameKey(c);
+    const capPlan = [
+      [cap.st, kind === 'exit' ? 0 : c.state ? 1 : 0, stKey, (root) => writeState(root, c), kind === 'state' && !final ? 0.6 : 0.85],
+      [cap.nm, final && kind !== 'exit' && (c.name || c.rows.length) ? 1 : 0, nmKey, (root) => writeName(root, c), 0.85],
+    ].map(([f, to, key, write, inAt]) => ({ f, from: f.op, to, key, write, inAt, change: kind !== 'exit' && f.shown !== key }));
+
+    const t0 = performance.now();
+    const step = (time) => {
+      const p = clamp((time - t0) / ms, 0, 1);
+      const seg = (s, e) => clamp((p - s) / (e - s), 0, 1);
+      const towards = (a, b, up, down) => a + (b - a) * (b > a ? up : down);
+      for (const [k, L] of states) {
+        const a = st0.get(k) || { lift: 0, on: 0 }, b = stTo(k);
+        L.lift = towards(a.lift, b.lift, back(seg(0.55, 1)), io(seg(0, 0.3)));
+        L.on = towards(a.on, b.on, io(seg(0.2, 0.6)), io(seg(0.3, 0.45)));
+      }
+      for (const [k, L] of seats) {
+        const a = se0.get(k) || { lift: 0, hl: 0 }, b = seTo(k, a);
+        L.lift = towards(a.lift, b.lift, back(seg(0.7, 1)), io(seg(0, 0.25)));
+        L.hl = towards(a.hl, b.hl, seg(0, 0.15), seg(0.25, 0.35));
+      }
+      const t = io(seg(camS, camE)), [cx, cy, w] = path(t), tl = io(seg(0.2, 0.85));
+      Object.assign(cam, {
+        cx, cy, w,
+        tilt: c0.tilt + (view.tilt - c0.tilt) * tl + dip * Math.sin(Math.PI * t),
+        rot: c0.rot + (view.rot - c0.rot) * tl,
+        fade: towards(c0.fade, fadeTo, io(seg(0.2, 0.7)), io(seg(0.1, 0.5))),
+      });
+      for (const q of capPlan) {
+        if (q.change) {
+          if (p < 0.15) q.f.op = q.from * (1 - seg(0, 0.15));
+          else {
+            if (q.f.shown !== q.key) { q.write(real); q.f.shown = q.key; }
+            q.f.op = q.to * seg(q.inAt, 1);
+          }
+        } else q.f.op = towards(q.from, q.to, seg(q.inAt, 1), seg(0, 0.15));
+      }
+      if (trace.to) {
+        trace.f = (index + seg(camS, camE)) / legs;
+        trace.op = 1;
+      }
+      draw();
+      if (p < 1) raf = requestAnimationFrame(step);
+      else done();
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  // ---- go to a scene: one leg, or two when new states have to lift before their seats rise
+  let moving = false, refit = false;
+  function reframe() {  // the current scene's view for the panel's current size, at once
+    refit = false;
+    const v = endView(scene);
+    Object.assign(cam, { cx: v.cx, cy: v.cy, w: v.w });
+  }
+  function go(B, fromFlat, arrived) {
+    cancelAnimationFrame(raf);
+    moving = true;
+    const prevFocus = fromFlat ? null : focus(scene), nextFocus = focus(B);
+    if (fromFlat) reset();
+    scene = B;
+    for (const [code, s] of Object.entries(B.states)) if (!states.has(code)) stateLayer(code, s);
+    for (const s of B.seats) setTops(seats.get(s.name) || seatLayer(s), s.tops);
+    panel.setAttribute('aria-label', B.caption.aria || 'Map of Australia');
+    replay.hidden = B.mode === 'flat' || touring;
+    trace.from = prevFocus && nextFocus && Math.hypot(prevFocus[0] - nextFocus[0], prevFocus[1] - nextFocus[1]) > 0.5 ? prevFocus : null;
+    trace.to = trace.from ? nextFocus : null;
+    trace.f = 0;
+    trace.op = 0;
+
+    const lifted = new Set([...states].filter(([, L]) => L.lift > 0.5).map(([k]) => k));
+    const entering = Object.keys(B.states).some((k) => !lifted.has(k));
+    let legs;
+    if (B.mode === 'flat') legs = [['exit', FULL(), 1000]];
+    else if (B.seats.length && entering) legs = [['state', stateView(B, false), lifted.size ? 1700 : 1080], ['seat', endView(B), 1500]];
+    else legs = [[B.seats.length ? 'seat' : 'state', endView(B), lifted.size || seats.size ? 1500 : 1300]];
+
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) legs = legs.map(([k, v]) => [k, v, 1]);
+    const run = (i) => {
+      if (i === legs.length) { moving = false; if (refit) reframe(); settle(); if (arrived) arrived(); return; }
+      const [kind, view, ms] = legs[i];
+      leg(B, kind, view, ms, i, legs.length, () => run(i + 1));
+    };
+    run(0);
+  }
+  function settle() {  // drop layers that have fully sunk, then let the flight path fade away
+    for (const [k, L] of states) if (L.lift < 0.01 && L.on < 0.01 && !(k in scene.states)) { dropLayer(L); states.delete(k); }
+    for (const [k, L] of seats) if (L.lift < 0.01 && L.hl < 0.01 && !scene.seats.some((s) => s.name === k)) { dropLayer(L); seats.delete(k); }
+    if (!trace.to) return draw();
+    const t0 = performance.now();
+    const fadeOut = (time) => {
+      trace.op = 1 - clamp((time - t0 - 500) / 700, 0, 1);
+      draw();
+      if (trace.op > 0) raf = requestAnimationFrame(fadeOut);
+      else trace.to = null;
+    };
+    raf = requestAnimationFrame(fadeOut);
+  }
+  function reset() {  // everything back to flat, at once (for Replay)
+    for (const L of states.values()) { L.lift = 0; L.on = 0; }
+    for (const L of seats.values()) { L.lift = 0; L.hl = 0; }
+    Object.assign(cam, FULL(), { fade: 0 });
+    cap.st.op = 0;
+    cap.nm.op = 0;
+    draw();
+  }
+
+  // ---- draw the current values
+  function draw() {
+    if (!G) return;
+    const W = Math.max(panel.clientWidth, 1), vw = cam.w * PW, vh = cam.w * aspect() * PH;
+    svg.setAttribute('viewBox', `${(cam.cx - vw / 2).toFixed(3)} ${(cam.cy - vh / 2).toFixed(3)} ${vw.toFixed(3)} ${vh.toFixed(3)}`);
+    plane.style.transform = `rotateX(${cam.tilt.toFixed(2)}deg) rotateZ(${cam.rot.toFixed(2)}deg)`;
+    gBase.style.opacity = (1 - 0.55 * cam.fade).toFixed(3);
+    const perPx = cam.w / W;  // map units per screen pixel
+    // A lift of z px would move a layer up the screen by z*sin(tilt); the same move within the tilted plane is z*tan(tilt) "up",
+    // turned back by the map's own rotation so the stacks rise straight up on screen.
+    const tanT = Math.tan((cam.tilt * Math.PI) / 180), sinR = Math.sin((cam.rot * Math.PI) / 180), cosR = Math.cos((cam.rot * Math.PI) / 180);
+    const up = (z) => {
+      const d = z * tanT * perPx;
+      return `translate(${(-d * sinR).toFixed(4)} ${(-d * cosR).toFixed(4)})`;
+    };
+    let topZ = 0;
+    for (const L of states.values()) {
+      const on = Math.min(1, L.on * 3).toFixed(3);
+      L.walls.forEach((w, i) => { w.setAttribute('transform', up((L.lift * i) / K)); w.style.opacity = L.lift > 0.3 ? on : 0; });
+      L.top.setAttribute('transform', up(L.lift));
+      L.top.style.opacity = on;
+      L.shadow.style.fillOpacity = (Math.min(1, L.lift / STATE_LIFT) * 0.18).toFixed(3);
+      topZ = Math.max(topZ, L.lift);
+    }
+    for (const L of seats.values()) {
+      const z0 = states.has(L.state) ? states.get(L.state).lift : 0;
+      L.shadow.setAttribute('transform', up(z0));
+      L.shadow.style.fillOpacity = (Math.min(1, L.lift / SEAT_LIFT) * 0.22 * L.hl).toFixed(3);
+      L.walls.forEach((w, i) => { w.setAttribute('transform', up(z0 + (L.lift * (i + 1)) / N)); w.style.opacity = L.hl.toFixed(3); });
+      const r = (PIN * perPx * clamp(2 - L.size / perPx / PIN, 0, 1)).toFixed(3);
+      for (const c of L.pins) c.setAttribute('r', r);
+    }
+    // the flight path: a dashed arc drawn from the old seat to the new one as the camera travels
+    gTrace.setAttribute('transform', up(topZ));
+    if (trace.to && trace.op > 0) {
+      const [x0, y0] = trace.from, [x1, y1] = trace.to, dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+      const mx = (x0 + x1) / 2 - dy * 0.22, my = (y0 + y1) / 2 + dx * 0.22 - len * 0.05;  // a gentle arc, bowed to one side
+      const n = Math.max(2, Math.round(48 * clamp(trace.f, 0, 1))), pts = [];
+      for (let i = 0; i <= n; i++) {
+        const u = (i / 48), a = (1 - u) * (1 - u), b = 2 * u * (1 - u), c = u * u;
+        pts.push(`${(a * x0 + b * mx + c * x1).toFixed(3)},${(a * y0 + b * my + c * y1).toFixed(3)}`);
+      }
+      trace.path.setAttribute('d', 'M' + pts.join('L'));
+      trace.path.setAttribute('style', `fill:none;stroke:#16140f;stroke-width:${(1.6 * perPx).toFixed(4)};stroke-dasharray:${(6 * perPx).toFixed(4)} ${(5 * perPx).toFixed(4)};opacity:${trace.op.toFixed(3)}`);
+      const [hx, hy] = pts[pts.length - 1].split(',');
+      trace.dot.setAttribute('cx', hx);
+      trace.dot.setAttribute('cy', hy);
+      trace.dot.setAttribute('r', (3.5 * perPx).toFixed(4));
+      trace.dot.setAttribute('style', `fill:#ffe45c;stroke:#16140f;stroke-width:${(1.2 * perPx).toFixed(4)};opacity:${trace.op.toFixed(3)}`);
+    } else {
+      trace.path.setAttribute('d', '');
+      trace.dot.setAttribute('r', 0);
+    }
+    real.style.opacity = Math.max(cap.st.op, cap.nm.op).toFixed(3);
+    part(real, '.state').style.opacity = cap.st.op.toFixed(3);
+    for (const sel of ['.seat', '.name', '.note']) part(real, sel).style.opacity = cap.nm.op.toFixed(3);
+    part(real, '.name').style.display = cap.nm.op > 0.01 ? '' : 'none';  // no empty space in the caption before the name fades in
+    part(real, '.note').style.display = cap.nm.op > 0.01 && part(real, '.note').textContent ? '' : 'none';
+  }
+
+  // ---- scenes from Python name their states and seats; the shapes come from seat_map.json (loaded once, from this folder)
+  const stateSeats = {};
+  function hydrate(B) {
+    const sts = {};
+    for (const code of B.states) {
+      if (!stateSeats[code]) stateSeats[code] = Object.values(G.seats).filter((v) => v.state === code).map((v) => v.d).join('');
+      sts[code] = { ...G.states[code], seats: stateSeats[code] };
+    }
+    return { ...B, states: sts, seats: B.seats.map((s) => ({ ...G.seats[s.key], tops: s.tops })) };
+  }
+
+  // ---- the idle tour (for a showcase): when nothing is chosen and nobody has touched the page for a while, the map visits
+  // one MP in each state and territory and shows a sentence of theirs from the record. Any touch, key or scroll ends it.
+  let py = null, tour = [], idleMs = 30000, kiosk = false, touring = false, stop = 0, tourTimer = 0, lastActive = performance.now();
+  const badge = document.getElementById('tourbadge'), quote = document.getElementById('tourquote');
+  const calm = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function showQuote(s) {
+    quote.querySelector('p').textContent = '\u201c' + s.quote.text + '\u201d';
+    const by = quote.querySelector('div');
+    by.replaceChildren();
+    const who = document.createElement('b');
+    who.textContent = s.who;
+    by.append(who, ` (${s.party}) \u00b7 ${s.quote.cite}`);
+    quote.classList.add('on');
+  }
+  function nextStop() {
+    const s = tour[stop++ % tour.length];
+    quote.classList.remove('on');
+    go(hydrate(s.scene), false, () => { if (!touring) return; showQuote(s); tourTimer = setTimeout(nextStop, 7000); });
+  }
+  function startTour() {
+    touring = true;
+    badge.hidden = false;
+    replay.hidden = true;
+    nextStop();
+  }
+  function endTour(back = true) {
+    if (!touring) return;
+    touring = false;
+    clearTimeout(tourTimer);
+    badge.hidden = true;
+    quote.classList.remove('on');
+    if (back) go(hydrate(py), false);  // fly home to whatever the page shows (the flat map)
+  }
+  function activity() {
+    lastActive = performance.now();
+    endTour();
+  }
+  for (const type of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll']) {
+    window.addEventListener(type, activity, { passive: true });
+    try { window.parent.document.addEventListener(type, activity, { passive: true, capture: true }); } catch (e) { /* not reachable: our own events only */ }
+  }
+  setInterval(() => {
+    if (!G || !py) return;
+    const idle = performance.now() - lastActive;
+    if (!touring && py.mode === 'flat' && tour.length && idle > idleMs && !calm()) startTour();
+    // kiosk (?kiosk=1): after two idle minutes on someone's page, go back to the start for the next visitor
+    if (kiosk && py.mode !== 'flat' && idle > 120000) { try { window.parent.location.href = window.parent.location.pathname + '?kiosk=1'; } catch (e) { /* ignore */ } }
+  }, 1000);
+
+  // ---- Streamlit's component messages (no library needed): say we are ready, then take each new scene as it arrives
+  const send = (type, data) => window.parent.postMessage({ isStreamlitMessage: true, type, ...data }, '*');
+  let latest = null, started = false;
+  function receive(args) {
+    const resized = args.height !== height;
+    if (resized) { height = args.height; send('streamlit:setFrameHeight', { height }); }
+    if (!G) { latest = args; return; }  // the shapes are still loading; the newest message is handled when they arrive
+    tour = args.tour || [];
+    idleMs = (args.idle || 30) * 1000;
+    kiosk = !!args.kiosk;
+    const B = args.scene, s = JSON.stringify([B.mode, B.states, B.seats, B.caption]);
+    if (s === sig) return;  // the same scene again (any rerun of the app sends it): nothing to do
+    sig = s;
+    py = B;
+    endTour(false);
+    clearTimeout(opening);
+    const first = !started;
+    started = true;
+    if (first && B.mode !== 'flat') { scene = { mode: 'flat', states: {}, seats: [], caption: B.caption }; opening = setTimeout(() => go(hydrate(B), true), 300); }
+    else if (resized && !first) opening = setTimeout(() => go(hydrate(B), false), 120);  // let the frame take its new height before framing the view
+    else go(hydrate(B), false);
+  }
+  window.addEventListener('message', (event) => {
+    const m = event.data;
+    if (m && m.type === 'streamlit:render' && m.args && m.args.scene) receive(m.args);
+  });
+  fetch('seat_map.json').then((r) => r.json()).then((shapes) => {
+    G = shapes;
+    el('path', { d: G.low.seats, style: 'fill:#fffdf8;stroke:#d9d4c7;stroke-width:.6px', ...LINE }, gBase);
+    el('path', { d: G.low.states, style: 'fill:none;stroke:#16140f;stroke-width:1.1px', ...LINE }, gBase);
+    trace.path = el('path', { d: '' }, gTrace);
+    trace.dot = el('circle', { r: 0 }, gTrace);
+    Object.assign(cam, FULL());
+    draw();
+    if (latest) receive(latest);
+  });
+  replay.addEventListener('click', () => scene && go(scene, true));
+  // the page sizes the map to the window, so a resize can change its shape: frame the current scene again (a move in
+  // progress keeps its course and is framed again when it lands)
+  window.addEventListener('resize', () => {
+    if (G && scene) { if (moving) refit = true; else reframe(); }
+    draw();
+  });
+  send('streamlit:componentReady', { apiVersion: 1 });
+})();
+</script>
+</body>
+</html>
