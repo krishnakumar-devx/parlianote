@@ -13,7 +13,7 @@ MAX_QUERY_CHARS = 300  # longest search text we accept
 
 # The two top-level modes, and the screens available once an MP has been chosen.
 MODES = ["Find my MP", "Search all MPs", "Compare MPs", "Parliament trends"]
-VIEWS = ["Overview", "Ask the record", "Question Time", "Promises", "About and limits"]
+VIEWS = ["At a glance", "Overview", "Ask the record", "Question Time", "Promises", "About and limits"]
 
 # Full party names for the abbreviations used in the record.
 PARTY_NAMES = {
@@ -32,6 +32,10 @@ PARTY_NAMES = {
     "CDP": "Christian Democratic Party",
     "PHON": "One Nation",
 }
+
+# Colours for the sides of politics, used on every chart and next to party names. Kept apart from the app's own colours
+# (ink and highlighter yellow) so the interface never looks like it belongs to one side.
+BLOC_COLOURS = {"Labor": "#C2412D", "Coalition": "#2E5E9E", "Other": "#8A857B"}
 
 # One-click examples shown on the home screen.
 EXAMPLE_POSTCODES = [("2088", "Mosman"), ("2000", "Sydney"), ("3000", "Melbourne"), ("4000", "Brisbane"), ("6000", "Perth")]

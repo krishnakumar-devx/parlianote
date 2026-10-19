@@ -1,5 +1,6 @@
 """Fast offline tests of the core logic behind the app (no models, no data files): python tests/test_core.py"""
 
+import re
 import sys
 
 import pandas as pd
@@ -10,9 +11,10 @@ from src import retrieval as R
 from src.blocs import CHAIR, bloc
 from src.commitment import commitment_type, is_commitment, split_sentences
 from src.stats import wilson
-from src.ui.components import results_csv
+from src.ui.components import APH_IDS, PHOTO_URL, photo_html, results_csv
 from src.ui.data import cite
 from src.ui.search import clean_query, tidy_query, usable_query
+from src.ui.views import focus_rows
 
 failures = []
 
@@ -93,6 +95,31 @@ csv = results_csv(
     speaker_col="displayName",
 ).decode()
 check("CSV export has a header and quotes commas", csv.startswith("speaker,party,date,citation,text") and '"Hello, world"' in csv)
+
+# --- "How their focus has changed": every subject gets every year, thin years are left out, biggest subject on top
+speech_topics = pd.DataFrame(
+    [(2010, "Health")] * 8 + [(2010, "Economy")] * 4 + [(2011, "Economy")] * 12 + [(2012, "Health")] * 3, columns=["year", "Topic"]
+)
+focus = focus_rows(speech_topics).set_index(["year", "Topic"])
+check("focus: a year with nothing on a subject counts as 0%", focus.loc[(2011, "Health"), "share"] == 0)
+check("focus: a year with too few speeches is left out", focus.loc[2012, "thin"].all() and focus.loc[2012, "share"].isna().all())
+check("focus: the biggest subject is on the top row", focus.loc[(2010, "Economy"), "row"] > focus.loc[(2010, "Health"), "row"])
+check(
+    "focus: each subject's peak year is marked",
+    sorted(focus[focus["peak"]].index.tolist()) == [(2010, "Health"), (2011, "Economy")],
+)
+check("focus: no chart without two usable years", focus_rows(speech_topics[speech_topics["year"] == 2010]) is None)
+
+# --- MP photos: each MP's ID on the Parliament's website (src/ui/aph_ids.json)
+check("Parliament IDs match the Parliament's website", APH_IDS["Albanese1963"] == "R36" and APH_IDS["Abbott1957"] == "EZ5")
+check("an MP elected from 2022 (known by name) has an ID too", APH_IDS.get("Abdo, Basem", "").isdigit())
+check(
+    "Parliament IDs are well formed and never shared",
+    all(re.fullmatch(r"[0-9A-Z]{2,7}", v) for v in APH_IDS.values()) and len(set(APH_IDS.values())) == len(APH_IDS),
+)
+check("an MP's photo is their official portrait", PHOTO_URL.format("R36") in photo_html("Albanese1963", "Anthony Albanese"))
+check("an MP with no Parliament ID keeps their initials only", photo_html("Nobody1900", "No Body") == "")
+check("the photo's label is escaped", "&lt;b&gt;" in photo_html("Albanese1963", "<b>"))
 
 print(f"\n{'ALL' if not failures else len(failures)} {'passed' if not failures else 'FAILED'}")
 sys.exit(1 if failures else 0)

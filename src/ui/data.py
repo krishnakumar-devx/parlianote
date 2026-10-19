@@ -4,6 +4,8 @@ Streamlit re-runs the whole script on every click, so anything slow is wrapped i
 st.cache_data, and models and search indexes with st.cache_resource.
 """
 
+import threading
+
 import pandas as pd
 import pyarrow.parquet as pq
 import streamlit as st
@@ -92,18 +94,57 @@ def load_minister_directness(min_answers: int = 40) -> pd.DataFrame:
     return pd.DataFrame(rows), float((opp["pred"] == "E").mean())
 
 
-@st.cache_resource(show_spinner="Loading language models (first time only, about 15 seconds)...")
-def load_models():
-    """Sentence-embedding model (picks key sentences) and cross-encoder (scores how well a passage answers a query)."""
+# Loading the two language models takes about 15 seconds, and the all-MPs index a few more. warm_up() starts both in a background
+# thread as soon as the app starts, so they are usually ready by the time someone searches; the loaders below wait for that thread
+# (or, if it failed, load on demand as before).
+_warm, _warm_lock = {}, threading.Lock()
+_warm_ready = {"models": threading.Event(), "global": threading.Event()}
+_warm_thread = None
+
+
+def _models_now():
     from sentence_transformers import CrossEncoder, SentenceTransformer
 
     return SentenceTransformer("all-MiniLM-L6-v2"), CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
 
+def _warm_all():
+    for name, load in (("models", _models_now), ("global", G.GlobalSearch)):
+        try:
+            _warm[name] = load()
+        except Exception:  # not fatal: the loader for it loads on demand instead
+            pass
+        finally:
+            _warm_ready[name].set()
+
+
+def warm_up():
+    """Start loading the models and the all-MPs index in the background (once per server process)."""
+    global _warm_thread
+    with _warm_lock:
+        if _warm_thread is None:
+            _warm_thread = threading.Thread(target=_warm_all, name="parlianote-warm-up", daemon=True)
+            _warm_thread.start()
+
+
+def _warmed(name: str):
+    """What the warm-up loaded under `name` (waiting for it if it is still loading), or None if there was no warm-up."""
+    if _warm_thread is None:
+        return None
+    _warm_ready[name].wait()
+    return _warm.get(name)
+
+
+@st.cache_resource(show_spinner="Loading language models (first time only)...")
+def load_models():
+    """Sentence-embedding model (picks key sentences) and cross-encoder (scores how well a passage answers a query)."""
+    return _warmed("models") or _models_now()
+
+
 @st.cache_resource(show_spinner="Loading the search index (first time only)...")
 def load_global():
     """Keyword index over every speech, used by the 'Search all MPs' screen."""
-    return G.GlobalSearch()
+    return _warmed("global") or G.GlobalSearch()
 
 
 @st.cache_data(ttl=60, show_spinner=False)

@@ -10,7 +10,10 @@ import pandas as pd
 import pyarrow.parquet as pq
 from streamlit.testing.v1 import AppTest
 
-APP = str(Path(__file__).resolve().parents[1] / "app" / "app.py")  # absolute: newer Streamlit resolves relative paths from this file
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.ui.components import APH_IDS  # noqa: E402
+
+APP =str(Path(__file__).resolve().parents[1] / "app" / "app.py")  # absolute: newer Streamlit resolves relative paths from this file
 results = []
 
 
@@ -68,6 +71,9 @@ for bad in ["abc", "123", "20 8", "0000", "1234", "9999", "0200", "7999"]:
 at = fresh()
 at.text_input[0].set_value("2088").run()
 check("valid postcode 2088 gives Steggall", (not at.exception) and "Steggall" in texts(at))
+check("the MP card shows their official photo", "aph.gov.au/api/parliamentarian/" in texts(at))
+missing = sorted(set(pq.read_table("app/data/speeches.parquet", columns=["mp_key"]).to_pandas()["mp_key"]) - set(APH_IDS))
+check("every MP in the app has a Parliament ID for their photo", not missing, ", ".join(missing[:5]))
 at = fresh()
 at.text_input[0].set_value(multi_pc).run()
 check(
@@ -83,9 +89,16 @@ for who, setter in [
 ]:
     at = fresh()
     setter(at).run()
-    for v in ["Overview", "Ask the record", "Question Time", "Promises", "About and limits"]:
+    for v in ["At a glance", "Overview", "Ask the record", "Question Time", "Promises", "About and limits"]:
         set_view(at, v)
         check(f"{who}: view {v!r} renders without error", not at.exception, str(at.exception[0].value)[:80] if at.exception else "")
+        if v == "Overview":
+            shown = texts(at)
+            if who.startswith("Steggall"):
+                check("Overview draws their focus one row per subject", "Each row is one subject" in shown)
+            else:  # too little record: a sentence says why there is no chart (or there are no subjects at all)
+                check(f"{who}: focus section explains a missing chart",
+                      "Not enough of their record yet" in shown or "How their focus has changed" not in shown)
 
 # ---- Ask the record (one MP)
 at = fresh()
@@ -144,6 +157,13 @@ at.radio[1].set_value("Question Time across ministers").run()
 shown = texts(at)
 check("ministers view shows the caution note and average line", (not at.exception) and "not a ranking" in shown and "Dashed line" in shown)
 check("ministers view has no control to rank MPs", len(at.radio) == 2)
+check("ministers view explains whether the model is fair", "Is the model fair?" in shown and "cannot tell model bias apart" in shown)
+
+# ---- Question Time: a minister's answers are shaded sentence by sentence
+at = fresh()
+at.selectbox[0].set_value("Albanese, Anthony").run()
+set_view(at, "Question Time")
+check("Question Time shades a minister's answers sentence by sentence", (not at.exception) and "responds to the question" in texts(at))
 
 # ---- Compare MPs
 at = fresh()

@@ -1,9 +1,10 @@
 [theme]
+# "The Record": warm paper, black ink. The rest of the look (fonts, highlighter, rules) is in src/ui/components.py.
 base = "light"
-primaryColor = "#1F5C3F"
-backgroundColor = "#EEF2EC"
-secondaryBackgroundColor = "#E3EBE1"
-textColor = "#1F2A24"
+primaryColor = "#16140F"
+backgroundColor = "#F7F5F0"
+secondaryBackgroundColor = "#FFFDF8"
+textColor = "#16140F"
 font = "sans serif"
 
 [browser]

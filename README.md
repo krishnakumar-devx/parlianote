@@ -14,14 +14,16 @@ Repository: <https://github.com/krishnakumar-devx/parlianote>
 
 | Screen | What it does |
 |---|---|
-| **Find my MP** | Postcode (or MP name) to the MP, then five views: Overview, Ask the record, Question Time, Promises, About and limits |
+| **Find my MP** | Postcode (or MP name) to the MP, with a map where their state lifts off the page and then their seat rises out of it (choose another MP and the map travels there, tracing the route); then six views: At a glance, Overview, Ask the record, Question Time, Promises, About and limits |
 | **Search all MPs** | Type a topic or question; see who spoke about it, three key sentences with their speaker, and the passages behind them |
 | **Compare MPs** | Two MPs side by side: the subjects each talks about, and what each said on the same question |
-| **Parliament trends** | How the subjects of the whole House changed from 1998 to 2025 (optionally by side of politics), and Question Time directness across ministers with 95% ranges |
+| **Parliament trends** | How the subjects of the whole House changed from 1998 to 2025 (optionally by side of politics), and Question Time directness across ministers with 95% ranges; below it, "Is the model fair?": the two sides compared, agreement with human labellers, accuracy, and what the estimate cannot tell you |
+| **At a glance** | The first view: the poster's questions answered in plain words (do they answer the question, against the average minister; what have they promised, with the most checkable promise; what do they talk about), each with its evidence one click away |
+| **On this day** | On the empty home screen: a sentence spoken on today's date in an earlier year (or the nearest sitting day), picked to make sense on its own and to avoid party politics |
 | **Overview** | Speeches per year, the subjects an MP talks about, and how that mix changed over time |
 | **Ask the record** | Search one MP's speeches; compare their early and late wording; download the results as CSV |
-| **Question Time** | A rough estimate of how directly ministers answer questions from the other side, with a confidence range |
-| **Promises** | Sentences where a minister says "we will ...", split into specific (a number, date or amount) and general |
+| **Question Time** | A rough estimate of how directly ministers answer questions from the other side, with a confidence range; each example exchange shades the answer sentence by sentence, showing where (or whether) it responds to the question |
+| **Promises** | Sentences where a minister says "we will ...", split into specific (a number, date or amount) and general; the most checkable come first, questions and cut-off sentences are left out, and the pledge and its numbers are highlighted |
 | **AI short answer** (optional) | An AI reads only the best passages and writes a short answer that cites them |
 
 If a search finds nothing that clearly matches, the app says so plainly and explains that this does **not** prove nobody spoke about it.
@@ -55,7 +57,13 @@ Then start the app:
 streamlit run app/app.py                 # or double-click run_app.bat on Windows
 ```
 
-Open <http://localhost:8501>. The first search takes about 15 seconds (up to a minute on a busy laptop) while the language models load; after that, a search takes 1 to 2 seconds. Links such as `http://localhost:8501/?postcode=2088` open a screen directly, and the address bar updates as you search so you can share a result.
+Open <http://localhost:8501>. The language models start loading in the background as soon as the app starts (about 15 seconds, up to a minute on a busy laptop), so by the time you search they are usually ready; a search then takes 1 to 2 seconds. Links such as `http://localhost:8501/?postcode=2088` open a screen directly, and the address bar updates as you search so you can share a result.
+
+### Showcase mode
+
+On the day, run `scripts/showcase.sh`. It starts the app on port 8510 with AI answers switched off (so nobody at the booth can spend your API credits) and keeps the Mac awake while it runs; keep the charger in and the lid open, because a closed lid still puts the Mac to sleep. Everything runs on the laptop and nothing is published online (to put the app online you would need a server with about 4 GB of memory).
+
+Open <http://localhost:8510/?kiosk=1> on the booth screen (or <http://localhost:8501/?kiosk=1> on a copy started as in Quick start). When nobody has touched the page for 8 seconds (30 seconds without `?kiosk=1`), the map tours one sitting MP in each state and territory, showing a short sentence of theirs from the record with its source; any touch, key or scroll ends the tour. In showcase mode the app also goes back to the start screen after two idle minutes on someone's page, ready for the next visitor. Tour quotes are picked automatically to be about the MP's own area and work, never about parties or the other side, and every one links to its Hansard page.
 
 ### Optional: AI-written answers
 
@@ -96,6 +104,12 @@ src/ui/                 the web app's building blocks
     config.py             settings and shared wording
     data.py               cached data and model loading
     search.py             cleans the user's query; searches one MP
+    seatmap.py            the seat map: finds the MP's seat on the 2025 boundaries (renamed and abolished seats included)
+                          and describes each "scene" (which states lift, which seats rise, the caption)
+    seat_map/index.html   the map itself: a Streamlit component that stays on the page and animates from one scene to the
+                          next (old seat sinks, camera flies, pulling back on long trips, new seat rises); plays the idle tour
+    seat_map/seat_map.json  the electorate shapes the map loads (built by scripts/build_seat_map.py)
+    aph_ids.json          each MP's ID on the Parliament's website, for their official photo (built by scripts/build_photo_ids.py)
     components.py         cards, buttons, quote boxes, AI answer box
     views.py              one function per screen
 src/                    the analysis pipeline (pairing, features, models, evaluation, retrieval, AI answer)
@@ -107,6 +121,8 @@ data/                   downloaded data, plus the small labelled sets the report
 results/                evaluation tables, figures and logs
 team_labelling/         the 45-question sheet teammates labelled independently (to measure agreement between labellers)
 scripts/download_data.py   fetches the public datasets
+scripts/build_seat_map.py  rebuilds the seat map's shapes from the AEC boundaries
+scripts/build_photo_ids.py rebuilds the list of Parliament IDs behind the MP photos
 ```
 
 ## Rebuilding the data
@@ -121,6 +137,18 @@ python -m src.score_pairs                # score every pair, about 1 hour on CPU
 python -m src.rescore                    # apply the final friendly-question rule to those scores
 python -m src.prepare_app_data           # tag every speech with a topic and write app/data/, about 10 minutes
 python -m src.global_search build        # index every speech for "Search all MPs", about 5 minutes
+```
+
+**The seat map.** `src/ui/seat_map/seat_map.json` (about 440 KB) is already in the repository, so the map works without rebuilding. To rebuild it from the AEC's 2025 boundaries you need [Node.js](https://nodejs.org) (the shapes are simplified with mapshaper, run through `npx`):
+
+```bash
+python scripts/build_seat_map.py         # downloads AUS-March-2025-esri.zip (22 MB) into data/ if needed, about 10 seconds
+```
+
+**MP photos.** The app shows each MP's official portrait, which the visitor's browser loads from aph.gov.au (with no internet, or if the Parliament's site is down, the MP's initials show instead). The Hansard corpus records every speaker's Parliament ID, so `src/ui/aph_ids.json` (about 11 KB, in the repository) maps each MP to theirs. To rebuild it (it reads three columns of the corpus, from `data/` or straight from Zenodo, in about 20 seconds):
+
+```bash
+python scripts/build_photo_ids.py
 ```
 
 **Faster `score_pairs` with a free GPU.** On a laptop without an NVIDIA GPU, `score_pairs` is the slow step. You can run just that step on Google Colab (Runtime > Change runtime type > T4 GPU), where it takes a few minutes:
@@ -146,17 +174,20 @@ python tests/run_all.py          # everything, a few minutes
 python tests/run_all.py --fast   # quick offline checks only
 ```
 
-116 automatic checks cover: political-bloc and pledge rules, query cleaning, the "no clear match" cut-offs, citations and CSV export, the AI-answer safety checks (using fake model replies, so no key or network is needed), and the whole app driven with odd inputs (bad postcodes, empty or hostile text, very long queries, non-English text, an MP with almost no speeches, every screen, including Compare MPs and Parliament trends).
+135 automatic checks cover: political-bloc and pledge rules, query cleaning, the "How their focus has changed" data (no gaps, thin years left out), the "no clear match" cut-offs, citations and CSV export, the AI-answer safety checks (using fake model replies, so no key or network is needed), and the whole app driven with odd inputs (bad postcodes, empty or hostile text, very long queries, non-English text, an MP with almost no speeches, every screen, including Compare MPs and Parliament trends), plus the MP photo links.
 
 ## Data and credits
 
 - **Hansard:** Katz, L., & Alexander, R. (2025). *A new, comprehensive database of all proceedings of the Australian Parliamentary Debates (1998-2025)*. Zenodo. <https://doi.org/10.5281/zenodo.17351233> (CC BY 4.0).
 - **Postcodes to electorates:** Matthew Proctor, <https://www.matthewproctor.com/australian_postcodes>. PO-box and business-only ranges are removed.
+- **Electoral boundaries (the seat map):** Australian Electoral Commission, federal electoral boundaries used at the 2025 election, <https://www.aec.gov.au/Electorates/gis/gis_datadownload.htm>. Simplified with [mapshaper](https://github.com/mbloch/mapshaper); external territories (Christmas, Cocos, Norfolk, Lord Howe and Macquarie Islands) are left off the map. The AEC's website content is licensed CC BY 4.0, but its copyright page excludes "AEC maps" and the download page does not state a licence for the boundary files, so check the terms before publishing the app beyond the class.
+- **MP photos:** Parliament of Australia, official portraits from <https://www.aph.gov.au>, licensed [CC BY-NC-ND 4.0](https://www.aph.gov.au/Help/Disclaimer_Privacy_Copyright): non-commercial use with credit, sharing "in whole or in part", and no changes. So each photo fills its frame, trimmed at the edges (never stretched), is never recoloured or retouched, and is credited in the footer. The copyright page does not name MP portraits specifically and keeps third-party copyright with its owners, so check before using the photos beyond the class.
 - **Use of generative AI:** generative AI tools helped write and test the code and create the evaluation labels (directness, pledge and retrieval judgements). Only the directness labels were checked independently, by two teammates on 45 questions (`team_labelling/`, `src/run_agreement.py`).
 
 ## Limitations and responsible use
 
 - House of Representatives only, March 1998 to July 2025. The newest speaker for an area is treated as its MP, so seats that changed hands at the 2025 election need checking.
+- The map always shows the boundaries used at the 2025 election. Seats are redrawn over time, so for a former MP the shape is today's seat of that name, not the one they represented. Renamed seats are shown under their new name (for example Batman is now Cooper); seats that no longer exist (for example Higgins and North Sydney, abolished in 2024) are shown at state level only.
 - The directness score is **rough**: among questions from the other side it separates "not direct" from the rest about 68% of the time (guessing gives 58%). It was trained on labels from a single annotator. A later check on 45 questions labelled independently by two teammates found moderate agreement on "dodged the question or not" (kappa 0.47, 80% of answers) and weaker agreement on the three-way split (kappa 0.35), so the labels are subjective. It describes how an answer is worded, not anyone's intent, and it must never be used to rank or judge individuals.
 - Question and answer labels in the source data are only reliable from 2011.
 - Subject names are our reading of an automatic grouping and can be wrong.
