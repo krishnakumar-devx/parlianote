@@ -14,23 +14,30 @@ Repository: <https://github.com/krishnakumar-devx/parlianote>
 
 | Screen | What it does |
 |---|---|
-| **Find my MP** | Postcode (or MP name) to the MP, with a map where their state lifts off the page and then their seat rises out of it (choose another MP and the map travels there, tracing the route); then six views: At a glance, Overview, Ask the record, Question Time, Promises, About and limits |
+| **Find my MP** | Postcode (or MP name) to the MP, with their official photo and a map where their state lifts off the page and then their seat rises out of it (choose another MP and the map travels there, tracing the route). Six views follow, listed below. Before anyone is chosen, **On this day** shows a sentence spoken on today's date in an earlier year (or the nearest sitting day), picked to make sense on its own and to avoid party politics |
 | **Search all MPs** | Type a topic or question; see who spoke about it, three key sentences with their speaker, and the passages behind them |
-| **Compare MPs** | Two MPs side by side: the subjects each talks about, and what each said on the same question |
+| **Compare MPs** | Two MPs side by side: both seats on one map, the subjects each talks about, and what each said on the same question |
 | **Parliament trends** | How the subjects of the whole House changed from 1998 to 2025 (optionally by side of politics), and Question Time directness across ministers with 95% ranges; below it, "Is the model fair?": the two sides compared, agreement with human labellers, accuracy, and what the estimate cannot tell you |
+
+![An MP's page: their photo, the seat map and the record at a glance](results/screens/fig_app_mp.png)
+
+For each MP:
+
+| View | What it shows |
+|---|---|
 | **At a glance** | The first view: the poster's questions answered in plain words (do they answer the question, against the average minister; what have they promised, with the most checkable promise; what do they talk about), each with its evidence one click away |
-| **On this day** | On the empty home screen: a sentence spoken on today's date in an earlier year (or the nearest sitting day), picked to make sense on its own and to avoid party politics |
-| **Overview** | Speeches per year, the subjects an MP talks about, and how that mix changed over time |
+| **Overview** | Speeches per year, the subjects they talk about, and how their focus changed: one row per subject across the years, with the year each one peaked |
 | **Ask the record** | Search one MP's speeches; compare their early and late wording; download the results as CSV |
 | **Question Time** | A rough estimate of how directly ministers answer questions from the other side, with a confidence range; each example exchange shades the answer sentence by sentence, showing where (or whether) it responds to the question |
 | **Promises** | Sentences where a minister says "we will ...", split into specific (a number, date or amount) and general; the most checkable come first, questions and cut-off sentences are left out, and the pledge and its numbers are highlighted |
+| **About and limits** | What the tool is, how it works and what to keep in mind, in plain language |
 | **AI short answer** (optional) | An AI reads only the best passages and writes a short answer that cites them |
 
 If a search finds nothing that clearly matches, the app says so plainly and explains that this does **not** prove nobody spoke about it.
 
 ## Quick start
 
-You need Python 3.10 or newer (developed on 3.13, also tested on 3.11). `requirements.txt` gives version ranges that are known to work together; the interface was tested with Streamlit 1.35 and 1.65.
+You need Python 3.10 or newer (developed on 3.13, also tested on 3.11 and 3.12). `requirements.txt` gives version ranges that are known to work together; the current interface was tested with Streamlit 1.65.
 
 ```bash
 pip install -r requirements.txt
@@ -86,6 +93,7 @@ Hansard 1998-2025 (648k rows)
    +-- topics over time                     LDA topic model, 10 subjects
    +-- search (one MP or everyone)          keyword match (BM25 / TF-IDF) -> cross-encoder re-reads the best -> verbatim sentences
    +-- Question Time (2011-2025)            pair each question with its answer -> directness score; pledge finder
+   +-- seat map and photos                  AEC 2025 boundaries (simplified); official portraits loaded from aph.gov.au
                           |
                     Streamlit web app  (+ optional AI answer from the retrieved passages only)
 ```
@@ -110,6 +118,7 @@ src/ui/                 the web app's building blocks
                           next (old seat sinks, camera flies, pulling back on long trips, new seat rises); plays the idle tour
     seat_map/seat_map.json  the electorate shapes the map loads (built by scripts/build_seat_map.py)
     aph_ids.json          each MP's ID on the Parliament's website, for their official photo (built by scripts/build_photo_ids.py)
+    quotes.py             picks sentences that stand alone on a public screen (the idle tour, "On this day")
     components.py         cards, buttons, quote boxes, AI answer box
     views.py              one function per screen
 src/                    the analysis pipeline (pairing, features, models, evaluation, retrieval, AI answer)
@@ -123,6 +132,7 @@ team_labelling/         the 45-question sheet teammates labelled independently (
 scripts/download_data.py   fetches the public datasets
 scripts/build_seat_map.py  rebuilds the seat map's shapes from the AEC boundaries
 scripts/build_photo_ids.py rebuilds the list of Parliament IDs behind the MP photos
+scripts/showcase.sh        runs the app for a booth screen (see Showcase mode)
 ```
 
 ## Rebuilding the data
